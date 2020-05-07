@@ -1,0 +1,7 @@
+*
+!COPYING
+!Pipfile
+!Pipfile.lock
+!README.md
+!setup.py
+!switchbot_mqtt

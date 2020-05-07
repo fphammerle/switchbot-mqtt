@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+switchbot-mqtt = {editable = true,path = "."}
+
+[dev-packages]
+black = "==19.10b0"
+mypy = "*"
+pylint = "*"
+pylint-import-requirements = "*"
+pytest = "*"
+pytest-cov = "*"
+
+[requires]
+python_version = "3"

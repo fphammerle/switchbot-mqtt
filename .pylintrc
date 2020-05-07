@@ -1,0 +1,9 @@
+[MASTER]
+
+load-plugins=pylint_import_requirements
+
+[MESSAGE CONTROL]
+
+disable=bad-continuation, # black
+        missing-function-docstring,
+        missing-module-docstring

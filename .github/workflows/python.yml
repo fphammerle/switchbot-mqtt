@@ -1,0 +1,55 @@
+# sync with https://github.com/fphammerle/ical2vdir/blob/master/.github/workflows/python.yml
+
+# shown in badge
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/configuring-a-workflow#adding-a-workflow-status-badge-to-your-repository
+name: tests
+
+on:
+  push:
+  pull_request:
+  schedule:
+  - cron: '0 20 * * 5'
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        python-version:
+        - 3.5
+        - 3.6
+        - 3.7
+        - 3.8
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - run: pip install --upgrade pipenv>=2018.10.9
+    - run: pipenv sync --dev
+    # ModuleNotFoundError: No module named 'importlib_metadata'
+    # https://github.com/WanzenBug/pylint-import-requirements/issues/17
+    - run: if python3 -c 'import sys; sys.exit(sys.version_info < (3, 8))'; then
+           pipenv graph;
+           pipenv install --dev importlib-metadata;
+           fi
+    - run: pipenv graph
+    - run: pipenv run pylint switchbot_mqtt
+    # https://github.com/PyCQA/pylint/issues/352
+    # disable parse-error due to:
+    # > tests/resources/__init__.py:1:0: F0010: error while code parsing: Unable to load file tests/resources/__init__.py:
+    # > [Errno 2] No such file or directory: 'tests/resources/__init__.py' (parse-error)
+    - run: pipenv run pylint --disable=missing-requirement --disable=parse-error tests/*
+    - run: pipenv run mypy switchbot_mqtt tests
+    - run: pipenv run pytest --cov=switchbot_mqtt --cov-report=term-missing --cov-fail-under=100
+    - run: pipenv run black --check .
+    # >=1.9.0 to detect branch name
+    # https://github.com/coveralls-clients/coveralls-python/pull/207
+    # https://github.com/coverallsapp/github-action/issues/4#issuecomment-547036866
+    # 1.11.0 https://github.com/coveralls-clients/coveralls-python/issues/219
+    - run: pip install 'coveralls>=1.9.0,<2,!=1.11.0'
+    # https://github.com/coverallsapp/github-action/issues/30
+    # https://github.com/coverallsapp/github-action/issues/4#issuecomment-529399410
+    - run: coveralls
+      env:
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
