@@ -22,15 +22,16 @@ import typing
 
 import paho.mqtt.client
 
-# https://www.home-assistant.io/docs/mqtt/discovery/#discovery_prefix
-_HOME_ASSISTANT_DEFAULT_DISCOVERY_PREFIX = "homeassistant"
-
 _LOGGER = logging.getLogger(__name__)
+
+_MQTT_SET_TOPIC_PATTERN = (
+    "homeassistant/switch/switchbot/{mac_address}/set"  # TODO parametrize
+)
 
 
 def _mqtt_on_connect(
     mqtt_client: paho.mqtt.client.Client,
-    userdata: typing.Any,
+    user_data: typing.Any,
     flags: typing.Dict,
     return_code: int,
 ) -> None:
@@ -39,6 +40,22 @@ def _mqtt_on_connect(
     assert return_code == 0, return_code  # connection accepted
     mqtt_broker_host, mqtt_broker_port = mqtt_client.socket().getpeername()
     _LOGGER.debug("connected to MQTT broker %s:%d", mqtt_broker_host, mqtt_broker_port)
+    # https://www.home-assistant.io/docs/mqtt/discovery/#discovery_prefix
+    mqtt_client.subscribe(_MQTT_SET_TOPIC_PATTERN.format(mac_address="+"))
+
+
+def _mqtt_on_message(
+    mqtt_client: paho.mqtt.client.Client,
+    user_data: typing.Any,
+    message: paho.mqtt.client.MQTTMessage,
+) -> None:
+    # pylint: disable=unused-argument; callback
+    # https://github.com/eclipse/paho.mqtt.python/blob/v1.5.0/src/paho/mqtt/client.py#L469
+    _LOGGER.debug("received topic=%s payload=%r", message.topic, message.payload)
+    if message.retain:
+        _LOGGER.info("ignoring retained message")
+        return
+    print("TODO", message.topic, message.payload)
 
 
 def _main() -> None:
@@ -57,6 +74,7 @@ def _main() -> None:
     # https://pypi.org/project/paho-mqtt/
     mqtt_client = paho.mqtt.client.Client()
     mqtt_client.on_connect = _mqtt_on_connect
+    mqtt_client.on_message = _mqtt_on_message
     _LOGGER.info(
         "connecting to MQTT broker %s:%d", args.mqtt_host, args.mqtt_port,
     )
