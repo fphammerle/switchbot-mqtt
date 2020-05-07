@@ -21,6 +21,7 @@ import logging
 import typing
 
 import paho.mqtt.client
+import switchbot
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,7 +76,14 @@ def _mqtt_on_message(
             _LOGGER.warning("unexpected topic %s", message.topic)
             return
     assert switchbot_mac_address
-    print("TODO", switchbot_mac_address, message.payload)
+    # TODO validate mac address
+    switchbot_device = switchbot.Switchbot(mac=switchbot_mac_address)
+    if message.payload.lower() == b"on":
+        print("TODO", switchbot_device.turn_on())
+    elif message.payload.lower() == b"off":
+        print("TODO", switchbot_device.turn_off())
+    else:
+        _LOGGER.warning("unexpected payload %r", message.payload)
 
 
 def _main() -> None:

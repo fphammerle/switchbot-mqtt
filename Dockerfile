@@ -21,3 +21,5 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION=$SWITCHBOT_MQTT_VERSION pipenv install --depl
 ENV PATH=$SOURCE_DIR_PATH/.venv/bin:$PATH
 ENTRYPOINT ["tini", "--"]
 CMD ["switchbot-mqtt"]
+
+#RUN apk add bluez-deprecated `# hcitool`

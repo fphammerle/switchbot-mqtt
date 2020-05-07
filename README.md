@@ -1,3 +1,13 @@
+## Docker
+
+```sh
+$ docker build -t switchbot-mqtt .
+$ docker run --name spelunca_switchbot \
+    --userns host --network host \
+    switchbot-mqtt:latest \
+    switchbot-mqtt --help
+```
+
 ## Alternatives
 
 * https://github.com/binsentsu/switchbot-ctrl
