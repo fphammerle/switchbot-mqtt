@@ -18,6 +18,7 @@
 
 import argparse
 import logging
+import re
 import typing
 
 import paho.mqtt.client
@@ -36,6 +37,11 @@ _MQTT_SET_TOPIC_PATTERN = [
 _MQTT_SET_TOPIC = "/".join(_MQTT_SET_TOPIC_PATTERN).replace(
     _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER, "+"
 )
+_MAC_ADDRESS_REGEX = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
+
+
+def _mac_address_valid(mac_address: str) -> bool:
+    return _MAC_ADDRESS_REGEX.match(mac_address.lower()) is not None
 
 
 def _mqtt_on_connect(
@@ -76,7 +82,9 @@ def _mqtt_on_message(
             _LOGGER.warning("unexpected topic %s", message.topic)
             return
     assert switchbot_mac_address
-    # TODO validate mac address
+    if not _mac_address_valid(switchbot_mac_address):
+        _LOGGER.warning("invalid mac address %s", switchbot_mac_address)
+        return
     switchbot_device = switchbot.Switchbot(mac=switchbot_mac_address)
     if message.payload.lower() == b"on":
         if not switchbot_device.turn_on():
