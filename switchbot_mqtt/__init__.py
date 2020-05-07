@@ -24,8 +24,16 @@ import paho.mqtt.client
 
 _LOGGER = logging.getLogger(__name__)
 
-_MQTT_SET_TOPIC_PATTERN = (
-    "homeassistant/switch/switchbot/{mac_address}/set"  # TODO parametrize
+_MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER = "{mac_address}"
+_MQTT_SET_TOPIC_PATTERN = [
+    "homeassistant",
+    "switch",
+    "switchbot",
+    _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER,
+    "set",
+]  # TODO parametrize
+_MQTT_SET_TOPIC = "/".join(_MQTT_SET_TOPIC_PATTERN).replace(
+    _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER, "+"
 )
 
 
@@ -41,7 +49,7 @@ def _mqtt_on_connect(
     mqtt_broker_host, mqtt_broker_port = mqtt_client.socket().getpeername()
     _LOGGER.debug("connected to MQTT broker %s:%d", mqtt_broker_host, mqtt_broker_port)
     # https://www.home-assistant.io/docs/mqtt/discovery/#discovery_prefix
-    mqtt_client.subscribe(_MQTT_SET_TOPIC_PATTERN.format(mac_address="+"))
+    mqtt_client.subscribe(_MQTT_SET_TOPIC)
 
 
 def _mqtt_on_message(
@@ -55,7 +63,19 @@ def _mqtt_on_message(
     if message.retain:
         _LOGGER.info("ignoring retained message")
         return
-    print("TODO", message.topic, message.payload)
+    topic_split = message.topic.split("/")
+    if len(topic_split) != len(_MQTT_SET_TOPIC_PATTERN):
+        _LOGGER.warning("unexpected topic %s", message.topic)
+        return
+    switchbot_mac_address = None
+    for given_part, expected_part in zip(topic_split, _MQTT_SET_TOPIC_PATTERN):
+        if expected_part == _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER:
+            switchbot_mac_address = given_part
+        elif expected_part != given_part:
+            _LOGGER.warning("unexpected topic %s", message.topic)
+            return
+    assert switchbot_mac_address
+    print("TODO", switchbot_mac_address, message.payload)
 
 
 def _main() -> None:
