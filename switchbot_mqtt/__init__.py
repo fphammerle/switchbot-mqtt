@@ -79,9 +79,15 @@ def _mqtt_on_message(
     # TODO validate mac address
     switchbot_device = switchbot.Switchbot(mac=switchbot_mac_address)
     if message.payload.lower() == b"on":
-        print("TODO", switchbot_device.turn_on())
+        if not switchbot_device.turn_on():
+            _LOGGER.error("failed to turn on switchbot %s", switchbot_mac_address)
+        else:
+            _LOGGER.info("switchbot %s turned on", switchbot_mac_address)
     elif message.payload.lower() == b"off":
-        print("TODO", switchbot_device.turn_off())
+        if not switchbot_device.turn_off():
+            _LOGGER.error("failed to turn off switchbot %s", switchbot_mac_address)
+        else:
+            _LOGGER.info("switchbot %s turned off", switchbot_mac_address)
     else:
         _LOGGER.warning("unexpected payload %r", message.payload)
 
