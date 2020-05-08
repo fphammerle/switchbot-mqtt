@@ -1,3 +1,25 @@
+Use `sudo hcitool lescan`
+or select device settings > 3 dots on top right in
+[SwitchBot app](https://play.google.com/store/apps/details?id=com.theswitchbot.switchbot)
+to determine the **mac address**.
+
+## Home Assistant 🏡
+
+```yaml
+# https://www.home-assistant.io/docs/mqtt/broker/#configuration-variables
+mqtt:
+  broker: BROKER_HOSTNAME_OR_IP_ADDRESS
+  # credentials, additional options...
+
+# https://www.home-assistant.io/integrations/switch.mqtt/#configuration-variables
+switch:
+- platform: mqtt
+  name: some_name
+  command_topic: homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set
+  # http://materialdesignicons.com/
+  icon: mdi:light-switch
+```
+
 ## Docker
 
 ```sh
