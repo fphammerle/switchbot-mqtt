@@ -1,9 +1,9 @@
 import unittest.mock
 
 import pytest
+from paho.mqtt.client import MQTTMessage
 
 import switchbot_mqtt
-from paho.mqtt.client import MQTTMessage
 
 # pylint: disable=protected-access
 
