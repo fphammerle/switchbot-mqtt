@@ -16,8 +16,14 @@ def test__run(mqtt_host, mqtt_port):
     ) as mqtt_client_mock, unittest.mock.patch(
         "switchbot_mqtt._mqtt_on_message"
     ) as message_handler_mock:
-        switchbot_mqtt._run(mqtt_host=mqtt_host, mqtt_port=mqtt_port)
+        switchbot_mqtt._run(
+            mqtt_host=mqtt_host,
+            mqtt_port=mqtt_port,
+            mqtt_username=None,
+            mqtt_password=None,
+        )
     mqtt_client_mock.assert_called_once_with()
+    assert not mqtt_client_mock().username_pw_set.called
     mqtt_client_mock().connect.assert_called_once_with(host=mqtt_host, port=mqtt_port)
     mqtt_client_mock().socket().getpeername.return_value = (mqtt_host, mqtt_port)
     mqtt_client_mock().on_connect(mqtt_client_mock(), None, {}, 0)
@@ -27,6 +33,38 @@ def test__run(mqtt_host, mqtt_port):
     mqtt_client_mock().on_message(mqtt_client_mock(), None, "message")
     message_handler_mock.assert_called_once()
     mqtt_client_mock().loop_forever.assert_called_once_with()
+
+
+@pytest.mark.parametrize("mqtt_host", ["mqtt-broker.local"])
+@pytest.mark.parametrize("mqtt_port", [1833])
+@pytest.mark.parametrize("mqtt_username", ["me"])
+@pytest.mark.parametrize("mqtt_password", [None, "secret"])
+def test__run_authentication(mqtt_host, mqtt_port, mqtt_username, mqtt_password):
+    with unittest.mock.patch("paho.mqtt.client.Client") as mqtt_client_mock:
+        switchbot_mqtt._run(
+            mqtt_host=mqtt_host,
+            mqtt_port=mqtt_port,
+            mqtt_username=mqtt_username,
+            mqtt_password=mqtt_password,
+        )
+    mqtt_client_mock.assert_called_once_with()
+    mqtt_client_mock().username_pw_set.assert_called_once_with(
+        username=mqtt_username, password=mqtt_password,
+    )
+
+
+@pytest.mark.parametrize("mqtt_host", ["mqtt-broker.local"])
+@pytest.mark.parametrize("mqtt_port", [1833])
+@pytest.mark.parametrize("mqtt_password", ["secret"])
+def test__run_authentication_missing_username(mqtt_host, mqtt_port, mqtt_password):
+    with unittest.mock.patch("paho.mqtt.client.Client"):
+        with pytest.raises(ValueError):
+            switchbot_mqtt._run(
+                mqtt_host=mqtt_host,
+                mqtt_port=mqtt_port,
+                mqtt_username=None,
+                mqtt_password=mqtt_password,
+            )
 
 
 @pytest.mark.parametrize(

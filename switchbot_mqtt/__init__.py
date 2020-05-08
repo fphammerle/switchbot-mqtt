@@ -117,7 +117,12 @@ def _mqtt_on_message(
     _send_command(switchbot_mac_address=switchbot_mac_address, action=action)
 
 
-def _run(mqtt_host: str, mqtt_port: int) -> None:
+def _run(
+    mqtt_host: str,
+    mqtt_port: int,
+    mqtt_username: typing.Optional[str],
+    mqtt_password: typing.Optional[str],
+) -> None:
     # https://pypi.org/project/paho-mqtt/
     mqtt_client = paho.mqtt.client.Client()
     mqtt_client.on_connect = _mqtt_on_connect
@@ -125,6 +130,10 @@ def _run(mqtt_host: str, mqtt_port: int) -> None:
     _LOGGER.info(
         "connecting to MQTT broker %s:%d", mqtt_host, mqtt_port,
     )
+    if mqtt_username:
+        mqtt_client.username_pw_set(username=mqtt_username, password=mqtt_password)
+    elif mqtt_password:
+        raise ValueError("Missing MQTT username")
     mqtt_client.connect(host=mqtt_host, port=mqtt_port)
     mqtt_client.loop_forever()
 
@@ -141,5 +150,12 @@ def _main() -> None:
     )
     argparser.add_argument("--mqtt-host", type=str, required=True)
     argparser.add_argument("--mqtt-port", type=int, default=1883)
+    argparser.add_argument("--mqtt-username", type=str)
+    argparser.add_argument("--mqtt-password", type=str)
     args = argparser.parse_args()
-    _run(mqtt_host=args.mqtt_host, mqtt_port=args.mqtt_port)
+    _run(
+        mqtt_host=args.mqtt_host,
+        mqtt_port=args.mqtt_port,
+        mqtt_username=args.mqtt_username,
+        mqtt_password=args.mqtt_password,
+    )

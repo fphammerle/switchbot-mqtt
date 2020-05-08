@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added command line parameters `--mqtt-username` and `--mqtt-password`
+
 ### Fixed
 - Fixed executable name in command line help
 - Docker: no longer require build arg `SWITCHBOT_MQTT_VERSION`
