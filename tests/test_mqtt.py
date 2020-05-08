@@ -1,7 +1,8 @@
+import logging
 import unittest.mock
 
 import pytest
-from paho.mqtt.client import MQTTMessage
+from paho.mqtt.client import MQTT_ERR_QUEUE_SIZE, MQTT_ERR_SUCCESS, MQTTMessage
 
 import switchbot_mqtt
 
@@ -166,18 +167,34 @@ def test__mqtt_on_message_ignored_retained(
         (switchbot_mqtt._SwitchbotState.OFF, b"OFF"),
     ],
 )
+@pytest.mark.parametrize(
+    "return_code", [MQTT_ERR_SUCCESS, MQTT_ERR_QUEUE_SIZE],
+)
 def test__report_state(
+    caplog,
     state: switchbot_mqtt._SwitchbotState,
     switchbot_mac_address: str,
     expected_topic: str,
     expected_payload: bytes,
+    return_code: int,
 ):
     mqtt_client_mock = unittest.mock.MagicMock()
-    switchbot_mqtt._report_state(
-        mqtt_client=mqtt_client_mock,
-        switchbot_mac_address=switchbot_mac_address,
-        switchbot_state=state,
-    )
+    mqtt_client_mock.publish.return_value.rc = return_code
+    with caplog.at_level(logging.WARNING):
+        switchbot_mqtt._report_state(
+            mqtt_client=mqtt_client_mock,
+            switchbot_mac_address=switchbot_mac_address,
+            switchbot_state=state,
+        )
     mqtt_client_mock.publish.assert_called_once_with(
         topic=expected_topic, payload=expected_payload, retain=True,
     )
+    if return_code == MQTT_ERR_SUCCESS:
+        assert len(caplog.records) == 0
+    else:
+        assert len(caplog.records) == 1
+        assert caplog.record_tuples[0] == (
+            "switchbot_mqtt",
+            logging.ERROR,
+            "failed to publish state (rc={})".format(return_code),
+        )

@@ -81,16 +81,16 @@ def _report_state(
     switchbot_state: _SwitchbotState,
 ) -> None:
     # https://pypi.org/project/paho-mqtt/#publishing
-    message_info: paho.mqtt.client.MQTTMessageInfo = mqtt_client.publish(
-        topic=_MQTT_STATE_TOPIC.replace(
-            _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER, switchbot_mac_address
-        ),
-        payload=_MQTT_STATE_PAYLOAD_MAPPING[switchbot_state],
-        retain=True,
+    topic = _MQTT_STATE_TOPIC.replace(
+        _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER, switchbot_mac_address
     )
-    print("TODO", message_info.rc)
-    message_info.wait_for_publish()
-    print("TODO", message_info.rc, message_info.is_published)
+    payload = _MQTT_STATE_PAYLOAD_MAPPING[switchbot_state]
+    _LOGGER.debug("publishing topic=%s payload=%r", topic, payload)
+    message_info: paho.mqtt.client.MQTTMessageInfo = mqtt_client.publish(
+        topic=topic, payload=payload, retain=True,
+    )
+    if message_info.rc != paho.mqtt.client.MQTT_ERR_SUCCESS:
+        _LOGGER.error("failed to publish state (rc=%d)", message_info.rc)
 
 
 def _send_command(
