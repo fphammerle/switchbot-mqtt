@@ -13,6 +13,8 @@ RUN apk add --no-cache \
     make \
     musl-dev \
     py3-virtualenv
+# TODO merge
+RUN apk add --no-cache git `# setuptools_scm`
 
 ARG SOURCE_DIR_PATH
 RUN mkdir $SOURCE_DIR_PATH \
@@ -25,8 +27,8 @@ ENV PATH=$VIRTUALENV_PATH/bin:$PATH
 WORKDIR $SOURCE_DIR_PATH
 RUN pip install --no-cache-dir pipenv
 COPY --chown=nobody . $SOURCE_DIR_PATH
-ARG SWITCHBOT_MQTT_VERSION=
-RUN SETUPTOOLS_SCM_PRETEND_VERSION=$SWITCHBOT_MQTT_VERSION pipenv install --deploy --verbose
+RUN pipenv install --deploy --verbose \
+    && rm -r .git/
 
 # workaround for broken multi-stage copy
 # > failed to copy files: failed to copy directory: Error processing tar file(exit status 1): Container ID ... cannot be mapped to a host ID

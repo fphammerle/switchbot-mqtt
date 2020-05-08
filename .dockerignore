@@ -1,4 +1,6 @@
 *
+# setuptools_scm
+!.git/
 !COPYING
 !Pipfile
 !Pipfile.lock

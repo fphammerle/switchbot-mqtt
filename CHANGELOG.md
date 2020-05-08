@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - Fixed executable name in command line help
+- Docker: no longer require build arg `SWITCHBOT_MQTT_VERSION`
+  (fixes auto build on hub.docker.com)
 
 ## [0.1.0] - 2020-05-08
 ### Added
