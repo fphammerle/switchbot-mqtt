@@ -51,4 +51,4 @@ COPY --from=build $SOURCE_DIR_PATH $SOURCE_DIR_PATH
 ARG VIRTUALENV_PATH
 ENV PATH=$VIRTUALENV_PATH/bin:$PATH
 ENTRYPOINT ["tini", "--"]
-CMD ["switchbot-mqtt"]
+CMD ["switchbot-mqtt", "--help"]

@@ -136,7 +136,7 @@ def _main() -> None:
         datefmt="%Y-%m-%dT%H:%M:%S%z",
     )
     argparser = argparse.ArgumentParser(
-        "MQTT client controlling SwitchBot button automators, "
+        description="MQTT client controlling SwitchBot button automators, "
         "compatible with home-assistant.io's MQTT Switch platform"
     )
     argparser.add_argument("--mqtt-host", type=str, required=True)
