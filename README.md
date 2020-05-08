@@ -70,6 +70,10 @@ switch:
 
 ## Docker 🐳
 
+Pre-built docker image are available at https://hub.docker.com/r/fphammerle/switchbot-mqtt/tags
+
+Annotation of signed tags `docker/*` contains docker image digests: https://github.com/fphammerle/switchbot-mqtt/tags
+
 ```sh
 $ docker build -t switchbot-mqtt .
 $ docker run --name spelunca_switchbot \
