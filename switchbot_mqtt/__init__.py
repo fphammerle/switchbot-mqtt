@@ -116,6 +116,18 @@ def _mqtt_on_message(
     _send_command(switchbot_mac_address=switchbot_mac_address, action=action)
 
 
+def _run(mqtt_host: str, mqtt_port: int) -> None:
+    # https://pypi.org/project/paho-mqtt/
+    mqtt_client = paho.mqtt.client.Client()
+    mqtt_client.on_connect = _mqtt_on_connect
+    mqtt_client.on_message = _mqtt_on_message
+    _LOGGER.info(
+        "connecting to MQTT broker %s:%d", mqtt_host, mqtt_port,
+    )
+    mqtt_client.connect(host=mqtt_host, port=mqtt_port)
+    mqtt_client.loop_forever()
+
+
 def _main() -> None:
     logging.basicConfig(
         level=logging.DEBUG,
@@ -129,12 +141,4 @@ def _main() -> None:
     argparser.add_argument("--mqtt-host", type=str, required=True)
     argparser.add_argument("--mqtt-port", type=int, default=1883)
     args = argparser.parse_args()
-    # https://pypi.org/project/paho-mqtt/
-    mqtt_client = paho.mqtt.client.Client()
-    mqtt_client.on_connect = _mqtt_on_connect
-    mqtt_client.on_message = _mqtt_on_message
-    _LOGGER.info(
-        "connecting to MQTT broker %s:%d", args.mqtt_host, args.mqtt_port,
-    )
-    mqtt_client.connect(host=args.mqtt_host, port=args.mqtt_port)
-    mqtt_client.loop_forever()
+    _run(mqtt_host=args.mqtt_host, mqtt_port=args.mqtt_port)
