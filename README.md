@@ -5,6 +5,28 @@ to determine the **mac address**.
 
 ## Home Assistant 🏡
 
+### Rationale
+
+Why not use the official [SwitchBot integration](https://www.home-assistant.io/integrations/switchbot/)?
+
+I prefer not to share the host's **network stack** with home assistant
+(more complicated network setup
+and additional [netfilter](https://en.wikipedia.org/wiki/Netfilter) rules required for isolation).
+
+Sadly, `docker run --network host` even requires `--userns host`:
+> docker: Error response from daemon: cannot share the host's network namespace when user namespaces are enabled.
+
+The docker image built from this repository works around this limitation
+by explicitly running as an **unprivileged user**.
+
+The [official home assistant image](https://hub.docker.com/r/homeassistant/home-assistant)
+runs as `root`.
+This imposes an unnecessary security risk, especially when disabling user namespace remapping
+(`--userns host`).
+See https://github.com/fphammerle/docker-home-assistant for an alternative.
+
+### Setup
+
 ```yaml
 # https://www.home-assistant.io/docs/mqtt/broker/#configuration-variables
 mqtt:
