@@ -106,6 +106,7 @@ def _mqtt_on_message(
     if not _mac_address_valid(switchbot_mac_address):
         _LOGGER.warning("invalid mac address %s", switchbot_mac_address)
         return
+    # https://www.home-assistant.io/integrations/switch.mqtt/#payload_off
     if message.payload.lower() == b"on":
         action = _SwitchbotAction.ON
     elif message.payload.lower() == b"off":
