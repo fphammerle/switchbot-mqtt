@@ -111,9 +111,11 @@ def test__mqtt_on_message(
     message = MQTTMessage(topic=topic)
     message.payload = payload
     with unittest.mock.patch("switchbot_mqtt._send_command") as send_command_mock:
-        switchbot_mqtt._mqtt_on_message(None, None, message)
+        switchbot_mqtt._mqtt_on_message("client_dummy", None, message)
     send_command_mock.assert_called_once_with(
-        switchbot_mac_address=expected_mac_address, action=expected_action
+        mqtt_client="client_dummy",
+        switchbot_mac_address=expected_mac_address,
+        action=expected_action,
     )
 
 
@@ -150,3 +152,32 @@ def test__mqtt_on_message_ignored_retained(
     with unittest.mock.patch("switchbot_mqtt._send_command") as send_command_mock:
         switchbot_mqtt._mqtt_on_message(None, None, message)
     assert not send_command_mock.called
+
+
+@pytest.mark.parametrize(
+    ("switchbot_mac_address", "expected_topic"),
+    # https://www.home-assistant.io/docs/mqtt/discovery/#switches
+    [("aa:bb:cc:dd:ee:ff", "homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/state")],
+)
+@pytest.mark.parametrize(
+    ("state", "expected_payload"),
+    [
+        (switchbot_mqtt._SwitchbotState.ON, b"ON"),
+        (switchbot_mqtt._SwitchbotState.OFF, b"OFF"),
+    ],
+)
+def test__report_state(
+    state: switchbot_mqtt._SwitchbotState,
+    switchbot_mac_address: str,
+    expected_topic: str,
+    expected_payload: bytes,
+):
+    mqtt_client_mock = unittest.mock.MagicMock()
+    switchbot_mqtt._report_state(
+        mqtt_client=mqtt_client_mock,
+        switchbot_mac_address=switchbot_mac_address,
+        switchbot_state=state,
+    )
+    mqtt_client_mock.publish.assert_called_once_with(
+        topic=expected_topic, payload=expected_payload, retain=True,
+    )

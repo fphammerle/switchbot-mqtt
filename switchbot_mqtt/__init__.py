@@ -27,23 +27,33 @@ import switchbot
 
 _LOGGER = logging.getLogger(__name__)
 
-_MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER = "{mac_address}"
-_MQTT_SET_TOPIC_PATTERN = [
-    "homeassistant",
-    "switch",
-    "switchbot",
-    _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER,
-    "set",
-]
-_MQTT_SET_TOPIC = "/".join(_MQTT_SET_TOPIC_PATTERN).replace(
-    _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER, "+"
-)
-_MAC_ADDRESS_REGEX = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
-
 
 class _SwitchbotAction(enum.Enum):
     ON = 1
     OFF = 2
+
+
+class _SwitchbotState(enum.Enum):
+    ON = 1
+    OFF = 2
+
+
+# https://www.home-assistant.io/docs/mqtt/discovery/#switches
+_MQTT_TOPIC_PREFIX_LEVELS = ["homeassistant", "switch", "switchbot"]
+_MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER = "{mac_address}"
+_MQTT_SET_TOPIC_LEVELS = _MQTT_TOPIC_PREFIX_LEVELS + [
+    _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER,
+    "set",
+]
+_MQTT_SET_TOPIC = "/".join(_MQTT_SET_TOPIC_LEVELS).replace(
+    _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER, "+"
+)
+_MQTT_STATE_TOPIC = "/".join(
+    _MQTT_TOPIC_PREFIX_LEVELS + [_MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER, "state"]
+)
+# https://www.home-assistant.io/integrations/switch.mqtt/#state_off
+_MQTT_STATE_PAYLOAD_MAPPING = {_SwitchbotState.ON: b"ON", _SwitchbotState.OFF: b"OFF"}
+_MAC_ADDRESS_REGEX = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
 
 
 def _mac_address_valid(mac_address: str) -> bool:
@@ -65,19 +75,51 @@ def _mqtt_on_connect(
     mqtt_client.subscribe(_MQTT_SET_TOPIC)
 
 
-def _send_command(switchbot_mac_address: str, action: _SwitchbotAction) -> None:
+def _report_state(
+    mqtt_client: paho.mqtt.client.Client,
+    switchbot_mac_address: str,
+    switchbot_state: _SwitchbotState,
+) -> None:
+    # https://pypi.org/project/paho-mqtt/#publishing
+    message_info: paho.mqtt.client.MQTTMessageInfo = mqtt_client.publish(
+        topic=_MQTT_STATE_TOPIC.replace(
+            _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER, switchbot_mac_address
+        ),
+        payload=_MQTT_STATE_PAYLOAD_MAPPING[switchbot_state],
+        retain=True,
+    )
+    print("TODO", message_info.rc)
+    message_info.wait_for_publish()
+    print("TODO", message_info.rc, message_info.is_published)
+
+
+def _send_command(
+    mqtt_client: paho.mqtt.client.Client,
+    switchbot_mac_address: str,
+    action: _SwitchbotAction,
+) -> None:
     switchbot_device = switchbot.Switchbot(mac=switchbot_mac_address)
     if action == _SwitchbotAction.ON:
         if not switchbot_device.turn_on():
             _LOGGER.error("failed to turn on switchbot %s", switchbot_mac_address)
         else:
             _LOGGER.info("switchbot %s turned on", switchbot_mac_address)
+            _report_state(
+                mqtt_client=mqtt_client,
+                switchbot_mac_address=switchbot_mac_address,
+                switchbot_state=_SwitchbotState.ON,
+            )
     else:
         assert action == _SwitchbotAction.OFF, action
         if not switchbot_device.turn_off():
             _LOGGER.error("failed to turn off switchbot %s", switchbot_mac_address)
         else:
             _LOGGER.info("switchbot %s turned off", switchbot_mac_address)
+            _report_state(
+                mqtt_client=mqtt_client,
+                switchbot_mac_address=switchbot_mac_address,
+                switchbot_state=_SwitchbotState.OFF,
+            )
 
 
 def _mqtt_on_message(
@@ -92,11 +134,11 @@ def _mqtt_on_message(
         _LOGGER.info("ignoring retained message")
         return
     topic_split = message.topic.split("/")
-    if len(topic_split) != len(_MQTT_SET_TOPIC_PATTERN):
+    if len(topic_split) != len(_MQTT_SET_TOPIC_LEVELS):
         _LOGGER.warning("unexpected topic %s", message.topic)
         return
     switchbot_mac_address = None
-    for given_part, expected_part in zip(topic_split, _MQTT_SET_TOPIC_PATTERN):
+    for given_part, expected_part in zip(topic_split, _MQTT_SET_TOPIC_LEVELS):
         if expected_part == _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER:
             switchbot_mac_address = given_part
         elif expected_part != given_part:
@@ -114,7 +156,11 @@ def _mqtt_on_message(
     else:
         _LOGGER.warning("unexpected payload %r", message.payload)
         return
-    _send_command(switchbot_mac_address=switchbot_mac_address, action=action)
+    _send_command(
+        mqtt_client=mqtt_client,
+        switchbot_mac_address=switchbot_mac_address,
+        action=action,
+    )
 
 
 def _run(

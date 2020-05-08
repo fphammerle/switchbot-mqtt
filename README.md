@@ -64,6 +64,7 @@ switch:
 - platform: mqtt
   name: some_name
   command_topic: homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set
+  state_topic: homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/state
   # http://materialdesignicons.com/
   icon: mdi:light-switch
 ```
