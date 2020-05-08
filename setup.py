@@ -24,7 +24,11 @@ _REPO_URL = "https://github.com/fphammerle/switchbot-mqtt"
 
 setuptools.setup(
     name="switchbot-mqtt",
-    use_scm_version=True,
+    use_scm_version={
+        # > AssertionError: cant parse version docker/0.1.0-amd64
+        # https://github.com/pypa/setuptools_scm/blob/master/src/setuptools_scm/git.py#L15
+        "git_describe_command": "git describe --dirty --tags --long --match v*",
+    },
     packages=setuptools.find_packages(),
     description="MQTT client controlling SwitchBot button automators, "
     # https://www.home-assistant.io/integrations/switch.mqtt/
