@@ -17,6 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
+import enum
 import logging
 import re
 import typing
@@ -33,11 +34,16 @@ _MQTT_SET_TOPIC_PATTERN = [
     "switchbot",
     _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER,
     "set",
-]  # TODO parametrize
+]
 _MQTT_SET_TOPIC = "/".join(_MQTT_SET_TOPIC_PATTERN).replace(
     _MQTT_TOPIC_MAC_ADDRESS_PLACEHOLDER, "+"
 )
 _MAC_ADDRESS_REGEX = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
+
+
+class _SwitchbotAction(enum.Enum):
+    ON = 1
+    OFF = 2
 
 
 def _mac_address_valid(mac_address: str) -> bool:
@@ -57,6 +63,21 @@ def _mqtt_on_connect(
     _LOGGER.debug("connected to MQTT broker %s:%d", mqtt_broker_host, mqtt_broker_port)
     # https://www.home-assistant.io/docs/mqtt/discovery/#discovery_prefix
     mqtt_client.subscribe(_MQTT_SET_TOPIC)
+
+
+def _send_command(switchbot_mac_address: str, action: _SwitchbotAction) -> None:
+    switchbot_device = switchbot.Switchbot(mac=switchbot_mac_address)
+    if action == _SwitchbotAction.ON:
+        if not switchbot_device.turn_on():
+            _LOGGER.error("failed to turn on switchbot %s", switchbot_mac_address)
+        else:
+            _LOGGER.info("switchbot %s turned on", switchbot_mac_address)
+    else:
+        assert action == _SwitchbotAction.OFF, action
+        if not switchbot_device.turn_off():
+            _LOGGER.error("failed to turn off switchbot %s", switchbot_mac_address)
+        else:
+            _LOGGER.info("switchbot %s turned off", switchbot_mac_address)
 
 
 def _mqtt_on_message(
@@ -85,19 +106,14 @@ def _mqtt_on_message(
     if not _mac_address_valid(switchbot_mac_address):
         _LOGGER.warning("invalid mac address %s", switchbot_mac_address)
         return
-    switchbot_device = switchbot.Switchbot(mac=switchbot_mac_address)
     if message.payload.lower() == b"on":
-        if not switchbot_device.turn_on():
-            _LOGGER.error("failed to turn on switchbot %s", switchbot_mac_address)
-        else:
-            _LOGGER.info("switchbot %s turned on", switchbot_mac_address)
+        action = _SwitchbotAction.ON
     elif message.payload.lower() == b"off":
-        if not switchbot_device.turn_off():
-            _LOGGER.error("failed to turn off switchbot %s", switchbot_mac_address)
-        else:
-            _LOGGER.info("switchbot %s turned off", switchbot_mac_address)
+        action = _SwitchbotAction.OFF
     else:
         _LOGGER.warning("unexpected payload %r", message.payload)
+        return
+    _send_command(switchbot_mac_address=switchbot_mac_address, action=action)
 
 
 def _main() -> None:
