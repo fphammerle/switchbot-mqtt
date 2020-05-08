@@ -1,7 +1,27 @@
+# SwitchBot MQTT client
+
+MQTT client controlling [SwitchBot button automators](https://www.switch-bot.com/bot)
+
+Compatible with [Home Assistant](https://www.home-assistant.io/)'s
+[MQTT Switch](https://www.home-assistant.io/integrations/switch.mqtt/) platform.
+
+## Setup
+
+```sh
+$ pip3 install --user --upgrade switchbot-mqtt
+$ switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS
+```
+
 Use `sudo hcitool lescan`
 or select device settings > 3 dots on top right in
 [SwitchBot app](https://play.google.com/store/apps/details?id=com.theswitchbot.switchbot)
-to determine the **mac address**.
+to determine your SwitchBot's **mac address**.
+
+Send `ON` or `OFF` to topic `homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set`.
+
+```sh
+$ mosquitto_pub -h MQTT_BROKER -t homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set -m ON
+```
 
 ## Home Assistant 🏡
 
@@ -31,7 +51,7 @@ See https://github.com/fphammerle/docker-home-assistant for an alternative.
 # https://www.home-assistant.io/docs/mqtt/broker/#configuration-variables
 mqtt:
   broker: BROKER_HOSTNAME_OR_IP_ADDRESS
-  # credentials, additional options...
+  # credentials, additional options…
 
 # https://www.home-assistant.io/integrations/switch.mqtt/#configuration-variables
 switch:
@@ -42,14 +62,14 @@ switch:
   icon: mdi:light-switch
 ```
 
-## Docker
+## Docker 🐳
 
 ```sh
 $ docker build -t switchbot-mqtt .
 $ docker run --name spelunca_switchbot \
     --userns host --network host \
     switchbot-mqtt:latest \
-    switchbot-mqtt --help
+    switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS
 ```
 
 ## Alternatives
