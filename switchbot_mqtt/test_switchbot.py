@@ -1,3 +1,4 @@
+import logging
 import unittest.mock
 
 import pytest
@@ -11,15 +12,29 @@ import switchbot_mqtt
 @pytest.mark.parametrize(
     "action", [switchbot_mqtt._SwitchbotAction.ON, switchbot_mqtt._SwitchbotAction.OFF]
 )
-def test__send_command(mac_address, action):
+@pytest.mark.parametrize("command_successful", [True, False])
+def test__send_command(caplog, mac_address, action, command_successful):
     with unittest.mock.patch("switchbot.Switchbot") as switchbot_device_mock:
-        switchbot_device_mock.turn_on = unittest.mock.MagicMock(return_value=True)
-        switchbot_device_mock.turn_off = unittest.mock.MagicMock(return_value=True)
-        switchbot_mqtt._send_command(mac_address, action)
+        switchbot_device_mock().turn_on.return_value = command_successful
+        switchbot_device_mock().turn_off.return_value = command_successful
+        switchbot_device_mock.reset_mock()
+        with caplog.at_level(logging.INFO):
+            switchbot_mqtt._send_command(mac_address, action)
     switchbot_device_mock.assert_called_once_with(mac=mac_address)
+    assert len(caplog.records) == 1
+    logger, log_level, log_message = caplog.record_tuples[0]
+    assert logger == "switchbot_mqtt"
+    if command_successful:
+        assert log_level == logging.INFO
+    else:
+        assert log_level == logging.ERROR
+        assert "failed" in log_message
+    assert mac_address in log_message
     if action == switchbot_mqtt._SwitchbotAction.ON:
         switchbot_device_mock().turn_on.assert_called_once_with()
         assert not switchbot_device_mock().turn_off.called
+        assert "on" in log_message
     else:
         switchbot_device_mock().turn_off.assert_called_once_with()
         assert not switchbot_device_mock().turn_on.called
+        assert "off" in log_message
