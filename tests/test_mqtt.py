@@ -178,6 +178,7 @@ def test__report_state(
     expected_payload: bytes,
     return_code: int,
 ):
+    # pylint: disable=too-many-arguments
     mqtt_client_mock = unittest.mock.MagicMock()
     mqtt_client_mock.publish.return_value.rc = return_code
     with caplog.at_level(logging.WARNING):
