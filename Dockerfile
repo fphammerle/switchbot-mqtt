@@ -9,12 +9,11 @@ FROM $BASE_IMAGE as build
 
 RUN apk add --no-cache \
     gcc \
+    git `# setuptools_scm` \
     glib-dev \
     make \
     musl-dev \
     py3-virtualenv
-# TODO merge
-RUN apk add --no-cache git `# setuptools_scm`
 
 ARG SOURCE_DIR_PATH
 RUN mkdir $SOURCE_DIR_PATH \
