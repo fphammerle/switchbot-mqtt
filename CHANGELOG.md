@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added command line parameter `--mqtt-password-file`
 
+### Fixed
+- Docker build: fix `pipenv` failing to create cache
+
 ## [0.3.0] - 2020-05-08
 ### Added
 - Publish new state to `homeassistant/switch/switchbot/MAC_ADDRESS/state` on success

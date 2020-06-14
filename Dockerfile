@@ -24,10 +24,11 @@ ARG VIRTUALENV_PATH
 RUN virtualenv --no-site-packages $VIRTUALENV_PATH
 ENV PATH=$VIRTUALENV_PATH/bin:$PATH
 WORKDIR $SOURCE_DIR_PATH
-RUN pip install --no-cache-dir pipenv
+RUN pip install --no-cache-dir pipenv==2020.6.2
 COPY --chown=nobody . $SOURCE_DIR_PATH
+ENV PIPENV_CACHE_DIR=/tmp/pipenv-cache
 RUN pipenv install --deploy --verbose \
-    && rm -r .git/
+    && rm -r .git/ $PIPENV_CACHE_DIR
 
 # workaround for broken multi-stage copy
 # > failed to copy files: failed to copy directory: Error processing tar file(exit status 1): Container ID ... cannot be mapped to a host ID
