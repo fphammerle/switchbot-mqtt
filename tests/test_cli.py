@@ -79,6 +79,7 @@ def test__main(
         ("secret\n\n", "secret\n"),
         ("secret\r\n", "secret"),
         ("secret\n\r\n", "secret\n"),
+        ("你好\n", "你好"),
     ],
 )
 def test__main_password_file(tmpdir, password_file_content, expected_password):

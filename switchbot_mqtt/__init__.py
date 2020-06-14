@@ -209,7 +209,8 @@ def _main() -> None:
     )
     args = argparser.parse_args()
     if args.mqtt_password_path:
-        mqtt_password = args.mqtt_password_path.read_text()
+        # .read_text() replaces \r\n with \n
+        mqtt_password = args.mqtt_password_path.read_bytes().decode()
         if mqtt_password.endswith("\r\n"):
             mqtt_password = mqtt_password[:-2]
         elif mqtt_password.endswith("\n"):
