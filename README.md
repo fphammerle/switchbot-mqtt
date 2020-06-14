@@ -83,6 +83,14 @@ $ docker run --name spelunca_switchbot \
     switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS
 ```
 
+## MQTT Authentication
+
+```sh
+switchbot-mqtt --mqtt-username me --mqtt-password secret …
+# or
+switchbot-mqtt --mqtt-username me --mqtt-password-file /var/lib/secrets/mqtt/password …
+```
+
 ## Alternatives
 
 * https://github.com/binsentsu/switchbot-ctrl

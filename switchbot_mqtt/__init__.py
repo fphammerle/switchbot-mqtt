@@ -19,6 +19,7 @@
 import argparse
 import enum
 import logging
+import pathlib
 import re
 import typing
 
@@ -197,11 +198,27 @@ def _main() -> None:
     argparser.add_argument("--mqtt-host", type=str, required=True)
     argparser.add_argument("--mqtt-port", type=int, default=1883)
     argparser.add_argument("--mqtt-username", type=str)
-    argparser.add_argument("--mqtt-password", type=str)
+    password_argument_group = argparser.add_mutually_exclusive_group()
+    password_argument_group.add_argument("--mqtt-password", type=str)
+    password_argument_group.add_argument(
+        "--mqtt-password-file",
+        type=pathlib.Path,
+        metavar="PATH",
+        dest="mqtt_password_path",
+        help="stripping trailing newline",
+    )
     args = argparser.parse_args()
+    if args.mqtt_password_path:
+        mqtt_password = args.mqtt_password_path.read_text()
+        if mqtt_password.endswith("\r\n"):
+            mqtt_password = mqtt_password[:-2]
+        elif mqtt_password.endswith("\n"):
+            mqtt_password = mqtt_password[:-1]
+    else:
+        mqtt_password = args.mqtt_password
     _run(
         mqtt_host=args.mqtt_host,
         mqtt_port=args.mqtt_port,
         mqtt_username=args.mqtt_username,
-        mqtt_password=args.mqtt_password,
+        mqtt_password=mqtt_password,
     )
