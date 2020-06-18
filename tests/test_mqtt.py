@@ -32,7 +32,8 @@ def test__run(mqtt_host, mqtt_port):
         "homeassistant/switch/switchbot/+/set"
     )
     mqtt_client_mock().on_message(mqtt_client_mock(), None, "message")
-    message_handler_mock.assert_called_once()
+    # assert_called_once new in python3.6
+    assert message_handler_mock.call_count == 1
     mqtt_client_mock().loop_forever.assert_called_once_with()
 
 
