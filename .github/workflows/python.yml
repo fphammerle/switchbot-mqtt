@@ -48,12 +48,6 @@ jobs:
     - run: pipenv install --python "$PYTHON_VERSION" --deploy --dev
       env:
         PYTHON_VERSION: ${{ matrix.python-version }}
-    # ModuleNotFoundError: No module named 'importlib_metadata'
-    # https://github.com/WanzenBug/pylint-import-requirements/issues/17
-    - run: if python3 -c 'import sys; sys.exit(sys.version_info < (3, 8))'; then
-           pipenv graph;
-           pipenv install --dev importlib-metadata;
-           fi
     - run: pipenv graph
     - run: pipenv run pytest --cov=switchbot_mqtt --cov-report=term-missing --cov-fail-under=100
     - run: pipenv run pylint --load-plugins=pylint_import_requirements switchbot_mqtt
