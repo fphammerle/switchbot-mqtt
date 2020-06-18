@@ -7,12 +7,24 @@ name = "pypi"
 switchbot-mqtt = {editable = true,path = "."}
 
 [dev-packages]
-black = "==19.10b0"
+# black requires python>=3.6
+# https://github.com/psf/black/commit/e74117f172e29e8a980e2c9de929ad50d3769150#diff-2eeaed663bd0d25b7e608891384b7298R51
+black = {version = "==19.10b0", markers = "python_version >= '3.6'"}
 mypy = "*"
 pylint = "*"
 pylint-import-requirements = "*"
 pytest = "*"
 pytest-cov = "*"
+
+# python3.5 compatibility
+# https://github.com/jaraco/zipp/commit/05a3c52b4d41690e0471a2e283cffb500dc0329a
+zipp = "<2"
+# workaround https://github.com/pytest-dev/pytest/issues/3953
+pathlib2 = {version = "*", markers="python_version < '3.6'"}
+
+# python3.8 compatibility
+# workaround https://github.com/WanzenBug/pylint-import-requirements/issues/17
+importlib-metadata = "*"
 
 [requires]
 python_version = "3"
