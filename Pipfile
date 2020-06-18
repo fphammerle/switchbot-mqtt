@@ -25,6 +25,8 @@ pathlib2 = {version = "*", markers="python_version < '3.6'"}
 # python3.8 compatibility
 # workaround https://github.com/WanzenBug/pylint-import-requirements/issues/17
 importlib-metadata = "*"
+# workaround pipenv unexpectedly adding marker "python_version < '3.8'"
+typed-ast = "*"
 
 [requires]
 python_version = "3"
