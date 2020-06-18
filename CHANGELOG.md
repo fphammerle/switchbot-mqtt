@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
-- Replaced variable type hint incompatible with python3.5
+- Compatibility with python3.5:
+  - Replaced [PEP526](https://www.python.org/dev/peps/pep-0526/#abstract)-style variable type hint
+    with [PEP484](https://www.python.org/dev/peps/pep-0484/)-compatible
+  - Tests: Fixed `AttributeError` due to unavailable `MagicMock.assert_called_once`
 
 ## [0.4.0] - 2020-06-14
 ### Added
