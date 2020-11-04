@@ -51,7 +51,7 @@ def test__run_authentication(mqtt_host, mqtt_port, mqtt_username, mqtt_password)
         )
     mqtt_client_mock.assert_called_once_with()
     mqtt_client_mock().username_pw_set.assert_called_once_with(
-        username=mqtt_username, password=mqtt_password,
+        username=mqtt_username, password=mqtt_password
     )
 
 
@@ -131,9 +131,7 @@ def test__mqtt_on_message(
         (b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set", b"EIN"),
     ],
 )
-def test__mqtt_on_message_ignored(
-    topic: bytes, payload: bytes,
-):
+def test__mqtt_on_message_ignored(topic: bytes, payload: bytes):
     message = MQTTMessage(topic=topic)
     message.payload = payload
     with unittest.mock.patch("switchbot_mqtt._send_command") as send_command_mock:
@@ -145,9 +143,7 @@ def test__mqtt_on_message_ignored(
     ("topic", "payload"),
     [(b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set", b"ON")],
 )
-def test__mqtt_on_message_ignored_retained(
-    topic: bytes, payload: bytes,
-):
+def test__mqtt_on_message_ignored_retained(topic: bytes, payload: bytes):
     message = MQTTMessage(topic=topic)
     message.payload = payload
     message.retain = True
@@ -168,9 +164,7 @@ def test__mqtt_on_message_ignored_retained(
         (switchbot_mqtt._SwitchbotState.OFF, b"OFF"),
     ],
 )
-@pytest.mark.parametrize(
-    "return_code", [MQTT_ERR_SUCCESS, MQTT_ERR_QUEUE_SIZE],
-)
+@pytest.mark.parametrize("return_code", [MQTT_ERR_SUCCESS, MQTT_ERR_QUEUE_SIZE])
 def test__report_state(
     caplog,
     state: switchbot_mqtt._SwitchbotState,
@@ -189,7 +183,7 @@ def test__report_state(
             switchbot_state=state,
         )
     mqtt_client_mock.publish.assert_called_once_with(
-        topic=expected_topic, payload=expected_payload, retain=True,
+        topic=expected_topic, payload=expected_payload, retain=True
     )
     if return_code == MQTT_ERR_SUCCESS:
         assert len(caplog.records) == 0

@@ -67,7 +67,11 @@ setuptools.setup(
         "Programming Language :: Python :: 3.8",
         "Topic :: Home Automation",
     ],
-    entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt:_main",]},
+    entry_points={
+        "console_scripts": [
+            "switchbot-mqtt = switchbot_mqtt:_main",
+        ]
+    },
     install_requires=["PySwitchbot", "paho-mqtt<2"],
     setup_requires=["setuptools_scm"],
     tests_require=["pytest"],

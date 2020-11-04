@@ -69,7 +69,7 @@ def test__main(
 
 
 @pytest.mark.parametrize(
-    ("password_file_content", "expected_password",),
+    ("password_file_content", "expected_password"),
     [
         ("secret", "secret"),
         ("secret space", "secret space"),

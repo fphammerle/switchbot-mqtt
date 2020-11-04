@@ -88,7 +88,7 @@ def _report_state(
     payload = _MQTT_STATE_PAYLOAD_MAPPING[switchbot_state]
     _LOGGER.debug("publishing topic=%s payload=%r", topic, payload)
     message_info = mqtt_client.publish(
-        topic=topic, payload=payload, retain=True,
+        topic=topic, payload=payload, retain=True
     )  # type: paho.mqtt.client.MQTTMessageInfo
     if message_info.rc != paho.mqtt.client.MQTT_ERR_SUCCESS:
         _LOGGER.error("failed to publish state (rc=%d)", message_info.rc)
@@ -174,9 +174,7 @@ def _run(
     mqtt_client = paho.mqtt.client.Client()
     mqtt_client.on_connect = _mqtt_on_connect
     mqtt_client.on_message = _mqtt_on_message
-    _LOGGER.info(
-        "connecting to MQTT broker %s:%d", mqtt_host, mqtt_port,
-    )
+    _LOGGER.info("connecting to MQTT broker %s:%d", mqtt_host, mqtt_port)
     if mqtt_username:
         mqtt_client.username_pw_set(username=mqtt_username, password=mqtt_password)
     elif mqtt_password:
