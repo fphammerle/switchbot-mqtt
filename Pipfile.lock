@@ -24,9 +24,9 @@
         },
         "paho-mqtt": {
             "hashes": [
-                "sha256:e3d286198baaea195c8b3bc221941d25a3ab0e1507fc1779bdb7473806394be4"
+                "sha256:9feb068e822be7b3a116324e01fb6028eb1d66412bf98595ae72698965cb1cae"
             ],
-            "version": "==1.5.0"
+            "version": "==1.5.1"
         },
         "pyswitchbot": {
             "hashes": [
@@ -126,10 +126,10 @@
         },
         "isort": {
             "hashes": [
-                "sha256:54da7e92468955c4fceacd0c86bd0ec997b0e1ee80d97f67c35a78b719dccab1",
-                "sha256:6e811fcb295968434526407adb8796944f1988c5b65e8139058f2014cbe100fd"
+                "sha256:dcab1d98b469a12a1a624ead220584391648790275560e1a43e54c5dceae65e7",
+                "sha256:dcaeec1b5f0eca77faea2a35ab790b4f3680ff75590bfcb7145986905aab2f58"
             ],
-            "version": "==4.3.21"
+            "version": "==5.6.4"
         },
         "lazy-object-proxy": {
             "hashes": [
@@ -237,11 +237,11 @@
         },
         "pylint": {
             "hashes": [
-                "sha256:7dd78437f2d8d019717dbf287772d0b2dbdfd13fc016aa7faa08d67bccc46adc",
-                "sha256:d0ece7d223fe422088b0e8f13fa0a1e8eb745ebffcb8ed53d3e95394b6101a1c"
+                "sha256:bb4a908c9dadbc3aac18860550e870f58e1a02c9f2c204fdf5693d73be061210",
+                "sha256:bfe68f020f8a0fece830a22dd4d5dddb4ecc6137db04face4c3420a46a52239f"
             ],
             "index": "pypi",
-            "version": "==2.5.3"
+            "version": "==2.6.0"
         },
         "pylint-import-requirements": {
             "hashes": [
