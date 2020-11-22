@@ -52,5 +52,10 @@ ARG SOURCE_DIR_PATH
 COPY --from=build $SOURCE_DIR_PATH $SOURCE_DIR_PATH
 ARG VIRTUALENV_PATH
 ENV PATH=$VIRTUALENV_PATH/bin:$PATH
+
+ENV MQTT_HOST ""
+ENV MQTT_PORT "1883"
+ENV MQTT_USERNAME ""
+ENV MQTT_PASSWORD ""
 ENTRYPOINT ["tini", "--"]
-CMD ["switchbot-mqtt", "--help"]
+CMD ["sh", "-c", "switchbot-mqtt --mqtt-host \"$MQTT_HOST\" --mqtt-port \"$MQTT_PORT\" --mqtt-username \"$MQTT_USERNAME\" --mqtt-password \"$MQTT_PASSWORD\""]

@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Support parametrization via environment variables:
+  `MQTT_HOST`, `MQTT_PORT`, `MQTT_USERNAME` & `MQTT_PASSWORD`
 
 ## [0.4.1] - 2020-06-18
 ### Fixed
