@@ -71,7 +71,7 @@ switch:
 
 ## Docker 🐳
 
-Pre-built docker image are available at https://hub.docker.com/r/fphammerle/switchbot-mqtt/tags
+Pre-built docker images are available at https://hub.docker.com/r/fphammerle/switchbot-mqtt/tags
 
 Annotation of signed tags `docker/*` contains docker image digests: https://github.com/fphammerle/switchbot-mqtt/tags
 
@@ -81,6 +81,24 @@ $ docker run --name spelunca_switchbot \
     --userns host --network host \
     switchbot-mqtt:latest \
     switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS
+```
+
+Alternatively, you can use docker-compose
+```
+version: '3.8'
+
+services:
+  switchbot-mqtt:
+    image: switchbot-mqtt
+    container_name: switchbot-mqtt
+    network_mode: host
+    userns_mode: host
+    environment:
+      - MQTT_HOST=localhost
+      - MQTT_PORT=1883
+      - MQTT_USERNAME=username
+      - MQTT_PASSWORD=password
+    restart: unless-stopped
 ```
 
 ## MQTT Authentication
