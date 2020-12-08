@@ -100,6 +100,7 @@ def _send_command(
     action: _SwitchbotAction,
 ) -> None:
     switchbot_device = switchbot.Switchbot(mac=switchbot_mac_address)
+    # pySwitchbot catches & logs bluetooth exceptions (see `test__send_command_bluetooth_error`)
     if action == _SwitchbotAction.ON:
         if not switchbot_device.turn_on():
             _LOGGER.error("failed to turn on switchbot %s", switchbot_mac_address)

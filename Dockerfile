@@ -34,6 +34,7 @@ RUN pipenv install --deploy --verbose \
 # > failed to copy files: failed to copy directory: Error processing tar file(exit status 1): Container ID ... cannot be mapped to a host ID
 USER 0
 RUN chown -R 0:0 $SOURCE_DIR_PATH
+USER build
 
 
 FROM $BASE_IMAGE

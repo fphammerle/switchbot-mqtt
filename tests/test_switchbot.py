@@ -1,6 +1,7 @@
 import logging
 import unittest.mock
 
+import bluepy.btle
 import pytest
 
 import switchbot_mqtt
@@ -52,3 +53,35 @@ def test__send_command(caplog, mac_address, action, command_successful):
             switchbot_mac_address=mac_address,
             switchbot_state=expected_state,
         )
+
+
+@pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
+@pytest.mark.parametrize("action", [switchbot_mqtt._SwitchbotAction.ON])
+def test__send_command_bluetooth_error(caplog, mac_address, action):
+    """
+    paho.mqtt.python>=1.5.1 no longer implicitly suppresses exceptions in callbacks.
+    verify pySwitchbot catches exceptions raised in bluetooth stack.
+    https://github.com/Danielhiversen/pySwitchbot/blob/0.8.0/switchbot/__init__.py#L48
+    https://github.com/Danielhiversen/pySwitchbot/blob/0.8.0/switchbot/__init__.py#L94
+    """
+    with unittest.mock.patch(
+        "bluepy.btle.Peripheral",
+        side_effect=bluepy.btle.BTLEDisconnectError(
+            "Failed to connect to peripheral {}, addr type: random".format(mac_address)
+        ),
+    ), caplog.at_level(logging.ERROR):
+        switchbot_mqtt._send_command(
+            mqtt_client=None, switchbot_mac_address=mac_address, action=action
+        )
+    assert caplog.record_tuples == [
+        (
+            "switchbot",
+            logging.ERROR,
+            "Switchbot communication failed. Stopping trying.",
+        ),
+        (
+            "switchbot_mqtt",
+            logging.ERROR,
+            "failed to turn on switchbot {}".format(mac_address),
+        ),
+    ]
