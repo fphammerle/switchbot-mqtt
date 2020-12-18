@@ -1,5 +1,5 @@
-# switchbot-mqtt - MQTT client controlling SwitchBot button automators,
-# compatible with home-assistant.io's MQTT Switch platform
+# switchbot-mqtt - MQTT client controlling SwitchBot button & curtain automators,
+# compatible with home-assistant.io's MQTT Switch & Cover platform
 #
 # Copyright (C) 2020 Fabian Peter Hammerle <fabian@hammerle.me>
 #
@@ -27,12 +27,12 @@ setuptools.setup(
     use_scm_version={
         # > AssertionError: cant parse version docker/0.1.0-amd64
         # https://github.com/pypa/setuptools_scm/blob/master/src/setuptools_scm/git.py#L15
-        "git_describe_command": "git describe --dirty --tags --long --match v*",
+        "git_describe_command": "git describe --dirty --tags --long --match v*"
     },
     packages=setuptools.find_packages(),
-    description="MQTT client controlling SwitchBot button automators, "
+    description="MQTT client controlling SwitchBot button & curtain automators, "
     # https://www.home-assistant.io/integrations/switch.mqtt/
-    "compatible with home-assistant.io's MQTT Switch platform",
+    "compatible with home-assistant.io's MQTT Switch & Cover platform",
     long_description=pathlib.Path(__file__).parent.joinpath("README.md").read_text(),
     long_description_content_type="text/markdown",
     author="Fabian Peter Hammerle",
@@ -46,6 +46,8 @@ setuptools.setup(
         "bluetooth",
         "button",
         "click",
+        "cover",
+        "curtain",
         "home-assistant.io",
         "home-automation",
         "mqtt",
@@ -55,7 +57,7 @@ setuptools.setup(
     ],
     classifiers=[
         # https://pypi.org/classifiers/
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: End Users/Desktop",
         "Intended Audience :: System Administrators",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
@@ -67,12 +69,12 @@ setuptools.setup(
         "Programming Language :: Python :: 3.8",
         "Topic :: Home Automation",
     ],
-    entry_points={
-        "console_scripts": [
-            "switchbot-mqtt = switchbot_mqtt:_main",
-        ]
-    },
-    install_requires=["PySwitchbot", "paho-mqtt<2"],
+    entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt:_main"]},
+    install_requires=[
+        # >=0.9.0 for SwitchbotCurtain
+        "PySwitchbot>=0.9.0,<0.10",
+        "paho-mqtt<2",
+    ],
     setup_requires=["setuptools_scm"],
     tests_require=["pytest"],
 )

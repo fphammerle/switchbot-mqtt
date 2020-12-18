@@ -7,14 +7,21 @@
 [![Compatible Python Versions](https://img.shields.io/pypi/pyversions/switchbot-mqtt.svg)](https://pypi.org/project/switchbot-mqtt/)
 
 MQTT client controlling [SwitchBot button automators](https://www.switch-bot.com/bot)
+and [curtain motors](https://www.switch-bot.com/products/switchbot-curtain)
 
 Compatible with [Home Assistant](https://www.home-assistant.io/)'s
-[MQTT Switch](https://www.home-assistant.io/integrations/switch.mqtt/) platform.
+[MQTT Switch](https://www.home-assistant.io/integrations/switch.mqtt/)
+and [MQTT Cover](https://www.home-assistant.io/integrations/cover.mqtt/) platform.
 
 ## Setup
 
 ```sh
 $ pip3 install --user --upgrade switchbot-mqtt
+```
+
+## Usage
+
+```sh
 $ switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS
 ```
 
@@ -23,10 +30,20 @@ or select device settings > 3 dots on top right in
 [SwitchBot app](https://play.google.com/store/apps/details?id=com.theswitchbot.switchbot)
 to determine your SwitchBot's **mac address**.
 
+### Button Automator
+
 Send `ON` or `OFF` to topic `homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set`.
 
 ```sh
 $ mosquitto_pub -h MQTT_BROKER -t homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set -m ON
+```
+
+### Curtain Motor
+
+Send `OPEN`, `CLOSE`, or `STOP` to topic `homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/set`.
+
+```sh
+$ mosquitto_pub -h MQTT_BROKER -t homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/set -m CLOSE
 ```
 
 ## Home Assistant 🏡

@@ -53,7 +53,7 @@ jobs:
     - run: pipenv run pytest --cov=switchbot_mqtt --cov-report=term-missing --cov-fail-under=100
     - run: pipenv run pylint --load-plugins=pylint_import_requirements switchbot_mqtt
     # https://github.com/PyCQA/pylint/issues/352
-    - run: pipenv run pylint tests/*
+    - run: pipenv run pylint --disable=duplicate-code tests/*
     - run: pipenv run mypy switchbot_mqtt tests
     # >=1.9.0 to detect branch name
     # https://github.com/coveralls-clients/coveralls-python/pull/207

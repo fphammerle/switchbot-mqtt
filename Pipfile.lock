@@ -30,9 +30,10 @@
         },
         "pyswitchbot": {
             "hashes": [
-                "sha256:af5188bde92c681feb61dba73966ea0547386f30ae0b39b39097148d77d2fd46"
+                "sha256:49a18ddbe0cde5171397cbf8bfc661e02adb2939a05042bd5d998df16ab8d602",
+                "sha256:ec5aee8ac9fbd458e388dd706c64761fcc74a44eac7c85b292f96a3001b6a15a"
             ],
-            "version": "==0.8.0"
+            "version": "==0.9.0"
         },
         "switchbot-mqtt": {
             "editable": true,

@@ -16,21 +16,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import paho.mqtt.client
 import pytest
 
 import switchbot_mqtt
 
+# pylint: disable=protected-access
 
-@pytest.mark.parametrize(
-    ("mac_address", "valid"),
-    [
-        ("aa:bb:cc:dd:ee:ff", True),
-        ("AA:BB:CC:DD:EE:FF", True),
-        ("AA:12:34:45:67:89", True),
-        ("aabbccddeeff", False),  # not supported by PySwitchbot
-        ("aa:bb:cc:dd:ee:gg", False),
-    ],
-)
-def test__mac_address_valid(mac_address, valid):
-    # pylint: disable=protected-access
-    assert switchbot_mqtt._mac_address_valid(mac_address) == valid
+
+def test_abstract():
+    with pytest.raises(TypeError, match=r"\babstract class\b"):
+        # pylint: disable=abstract-class-instantiated
+        switchbot_mqtt._MQTTControlledActor(mac_address=None)
+
+
+def test_execute_command_abstract():
+    class _ActorMock(switchbot_mqtt._MQTTControlledActor):
+        def execute_command(
+            self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
+        ) -> None:
+            super().execute_command(
+                mqtt_message_payload=mqtt_message_payload, mqtt_client=mqtt_client
+            )
+
+    actor = _ActorMock(mac_address=None)
+    with pytest.raises(NotImplementedError):
+        actor.execute_command(mqtt_message_payload=b"dummy", mqtt_client="dummy")
