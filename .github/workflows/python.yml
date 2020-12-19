@@ -39,6 +39,7 @@ jobs:
         - 3.6
         - 3.7
         - 3.8
+        - 3.9
       fail-fast: false
     steps:
     - uses: actions/checkout@v1
@@ -51,7 +52,9 @@ jobs:
         PYTHON_VERSION: ${{ matrix.python-version }}
     - run: pipenv graph
     - run: pipenv run pytest --cov=switchbot_mqtt --cov-report=term-missing --cov-fail-under=100
-    - run: pipenv run pylint --load-plugins=pylint_import_requirements switchbot_mqtt
+    # https://github.com/PyCQA/pylint/issues/3882
+    - run: python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))'
+        || pipenv run pylint --load-plugins=pylint_import_requirements switchbot_mqtt
     # https://github.com/PyCQA/pylint/issues/352
     - run: pipenv run pylint --disable=duplicate-code tests/*
     - run: pipenv run mypy switchbot_mqtt tests
