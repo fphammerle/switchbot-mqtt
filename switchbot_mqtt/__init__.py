@@ -98,6 +98,7 @@ class _MQTTControlledActor(abc.ABC):
             "+" if isinstance(l, _MQTTTopicPlaceholder) else l
             for l in cls.MQTT_COMMAND_TOPIC_LEVELS
         )
+        _LOGGER.info("subscribing to MQTT topic %r", command_topic)
         mqtt_client.subscribe(command_topic)
         mqtt_client.message_callback_add(
             sub=command_topic, callback=cls._mqtt_command_callback

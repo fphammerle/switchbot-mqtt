@@ -30,8 +30,10 @@ import switchbot_mqtt
 
 @pytest.mark.parametrize("mqtt_host", ["mqtt-broker.local"])
 @pytest.mark.parametrize("mqtt_port", [1833])
-def test__run(mqtt_host, mqtt_port):
-    with unittest.mock.patch("paho.mqtt.client.Client") as mqtt_client_mock:
+def test__run(caplog, mqtt_host, mqtt_port):
+    with unittest.mock.patch(
+        "paho.mqtt.client.Client"
+    ) as mqtt_client_mock, caplog.at_level(logging.DEBUG):
         switchbot_mqtt._run(
             mqtt_host=mqtt_host,
             mqtt_port=mqtt_port,
@@ -42,7 +44,8 @@ def test__run(mqtt_host, mqtt_port):
     assert not mqtt_client_mock().username_pw_set.called
     mqtt_client_mock().connect.assert_called_once_with(host=mqtt_host, port=mqtt_port)
     mqtt_client_mock().socket().getpeername.return_value = (mqtt_host, mqtt_port)
-    mqtt_client_mock().on_connect(mqtt_client_mock(), None, {}, 0)
+    with caplog.at_level(logging.DEBUG):
+        mqtt_client_mock().on_connect(mqtt_client_mock(), None, {}, 0)
     assert mqtt_client_mock().subscribe.call_args_list == [
         unittest.mock.call("homeassistant/switch/switchbot/+/set"),
         unittest.mock.call("homeassistant/cover/switchbot-curtain/+/set"),
@@ -58,6 +61,28 @@ def test__run(mqtt_host, mqtt_port):
         ),
     ]
     mqtt_client_mock().loop_forever.assert_called_once_with()
+    assert caplog.record_tuples == [
+        (
+            "switchbot_mqtt",
+            logging.INFO,
+            "connecting to MQTT broker {}:{}".format(mqtt_host, mqtt_port),
+        ),
+        (
+            "switchbot_mqtt",
+            logging.DEBUG,
+            "connected to MQTT broker {}:{}".format(mqtt_host, mqtt_port),
+        ),
+        (
+            "switchbot_mqtt",
+            logging.INFO,
+            "subscribing to MQTT topic 'homeassistant/switch/switchbot/+/set'",
+        ),
+        (
+            "switchbot_mqtt",
+            logging.INFO,
+            "subscribing to MQTT topic 'homeassistant/cover/switchbot-curtain/+/set'",
+        ),
+    ]
 
 
 @pytest.mark.parametrize("mqtt_host", ["mqtt-broker.local"])
