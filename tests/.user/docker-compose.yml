@@ -1,0 +1,19 @@
+version: '2.2'
+
+networks:
+  default:
+    driver_opts:
+      com.docker.network.bridge.name: switchbot-mqtt
+
+services:
+  broker:
+    image: docker.io/eclipse-mosquitto:latest
+    user: mosquitto
+    read_only: yes
+    ports: ['127.0.0.1:1883:1883/tcp']
+    cap_drop: [all]
+    security_opt: [no-new-privileges]
+    cpus: 0.4
+    mem_limit: 32M
+
+# https://docs.docker.com/compose/compose-file/compose-file-v2/
