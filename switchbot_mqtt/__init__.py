@@ -257,7 +257,7 @@ def _run(
 def _main() -> None:
     logging.basicConfig(
         level=logging.DEBUG,
-        format="%(asctime)s:%(levelname)s:%(message)s",
+        format="%(asctime)s:%(levelname)s:%(name)s:%(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S%z",
     )
     argparser = argparse.ArgumentParser(

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Upgrade `paho-mqtt` to no longer suppress exceptions occuring in mqtt callbacks
     ( https://github.com/eclipse/paho.mqtt.python/blob/v1.5.1/ChangeLog.txt#L4 )
   - Build stage: revert user after applying `chown` workaround for inter-stage copy
+- Log format: added name of logger between level and message
 
 ## [0.5.0] - 2020-11-22
 ### Added
