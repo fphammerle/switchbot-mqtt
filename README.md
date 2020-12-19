@@ -79,11 +79,17 @@ mqtt:
 # https://www.home-assistant.io/integrations/switch.mqtt/#configuration-variables
 switch:
 - platform: mqtt
-  name: some_name
+  name: switchbot_button
   command_topic: homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set
   state_topic: homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/state
   # http://materialdesignicons.com/
   icon: mdi:light-switch
+
+cover:
+- platform: mqtt
+  name: switchbot_curtains
+  command_topic: homeassistant/cover/switchbot-curtain/11:22:33:44:55:66/set
+  state_topic: homeassistant/cover/switchbot-curtain/11:22:33:44:55:66/state
 ```
 
 ## Docker 🐳
