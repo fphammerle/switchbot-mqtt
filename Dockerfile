@@ -31,7 +31,8 @@ ENV PIPENV_CACHE_DIR=/tmp/pipenv-cache \
 RUN pipenv install --deploy --verbose \
     && pipenv graph \
     && pipenv run pip freeze \
-    && rm -r .git/ $PIPENV_CACHE_DIR
+    && rm -r .git/ $PIPENV_CACHE_DIR \
+    && chmod -cR a+rX .
 
 # workaround for broken multi-stage copy
 # > failed to copy files: failed to copy directory: Error processing tar file(exit status 1): Container ID ... cannot be mapped to a host ID
