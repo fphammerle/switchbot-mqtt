@@ -6,12 +6,14 @@ ARG BASE_IMAGE=alpine:3.13.1
 ARG SOURCE_DIR_PATH=/switchbot-mqtt
 
 
+# hadolint ignore=DL3006
 FROM $BASE_IMAGE as build
 
 RUN apk add --no-cache \
         gcc \
         git `# setuptools_scm` \
         glib-dev \
+        jq `# edit Pipfile.lock` \
         make \
         musl-dev \
         py3-certifi `# pipenv` \
@@ -23,11 +25,16 @@ USER build
 RUN pip3 install --user --no-cache-dir pipenv==2020.6.2
 
 ARG SOURCE_DIR_PATH
-COPY --chown=build:nobody . $SOURCE_DIR_PATH
+COPY --chown=build:nobody Pipfile Pipfile.lock $SOURCE_DIR_PATH/
 WORKDIR $SOURCE_DIR_PATH
 ENV PIPENV_CACHE_DIR=/tmp/pipenv-cache \
     PIPENV_VENV_IN_PROJECT=yes-please \
     PATH=/home/build/.local/bin:$PATH
+# `sponge` is not pre-installed
+RUN jq 'del(.default."switchbot-mqtt")' Pipfile.lock > Pipfile.lock~ \
+    && mv Pipfile.lock~ Pipfile.lock \
+    && pipenv install --deploy --verbose
+COPY --chown=build:nobody . $SOURCE_DIR_PATH
 RUN pipenv install --deploy --verbose \
     && pipenv graph \
     && pipenv run pip freeze \
@@ -41,6 +48,7 @@ RUN chown -R 0:0 $SOURCE_DIR_PATH
 USER build
 
 
+# hadolint ignore=DL3006
 FROM $BASE_IMAGE
 
 RUN apk add --no-cache \

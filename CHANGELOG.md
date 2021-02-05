@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- dockerfile: split `pipenv install` into two stages to speed up image builds
 - dockerfile: `chmod` files copied from host to no longer require `o=rX` perms on host
 
 ## [0.6.0] - 2020-12-19
