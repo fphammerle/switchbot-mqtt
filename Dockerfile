@@ -1,33 +1,36 @@
+# sync with https://github.com/fphammerle/systemctl-mqtt/blob/master/Dockerfile
+
 # not using python:3.*-alpine cause glib-dev package depends on python3
 # https://pkgs.alpinelinux.org/package/v3.11/main/aarch64/glib-dev
-ARG BASE_IMAGE=alpine:3.11
+ARG BASE_IMAGE=alpine:3.13.1
 ARG SOURCE_DIR_PATH=/switchbot-mqtt
-ARG VIRTUALENV_PATH=$SOURCE_DIR_PATH/.venv
 
 
 FROM $BASE_IMAGE as build
 
 RUN apk add --no-cache \
-    gcc \
-    git `# setuptools_scm` \
-    glib-dev \
-    make \
-    musl-dev \
-    py3-virtualenv
+        gcc \
+        git `# setuptools_scm` \
+        glib-dev \
+        make \
+        musl-dev \
+        py3-certifi `# pipenv` \
+        py3-pip `# pipenv install` \
+        py3-virtualenv `# pipenv` \
+    && adduser -S build
+
+USER build
+RUN pip3 install --user --no-cache-dir pipenv==2020.6.2
 
 ARG SOURCE_DIR_PATH
-RUN mkdir $SOURCE_DIR_PATH \
-    && chown nobody $SOURCE_DIR_PATH
-USER nobody
-
-ARG VIRTUALENV_PATH
-RUN virtualenv --no-site-packages $VIRTUALENV_PATH
-ENV PATH=$VIRTUALENV_PATH/bin:$PATH
+COPY --chown=build:nobody . $SOURCE_DIR_PATH
 WORKDIR $SOURCE_DIR_PATH
-RUN pip install --no-cache-dir pipenv==2020.6.2
-COPY --chown=nobody . $SOURCE_DIR_PATH
-ENV PIPENV_CACHE_DIR=/tmp/pipenv-cache
+ENV PIPENV_CACHE_DIR=/tmp/pipenv-cache \
+    PIPENV_VENV_IN_PROJECT=yes-please \
+    PATH=/home/build/.local/bin:$PATH
 RUN pipenv install --deploy --verbose \
+    && pipenv graph \
+    && pipenv run pip freeze \
     && rm -r .git/ $PIPENV_CACHE_DIR
 
 # workaround for broken multi-stage copy
@@ -51,7 +54,7 @@ USER nobody
 
 ARG SOURCE_DIR_PATH
 COPY --from=build $SOURCE_DIR_PATH $SOURCE_DIR_PATH
-ARG VIRTUALENV_PATH
+ARG VIRTUALENV_PATH=$SOURCE_DIR_PATH/.venv
 ENV PATH=$VIRTUALENV_PATH/bin:$PATH
 
 ENV MQTT_HOST ""
