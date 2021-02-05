@@ -7,7 +7,9 @@ networks:
 
 services:
   broker:
-    image: docker.io/eclipse-mosquitto:latest
+    # v2 binds to loopback device
+    # https://github.com/eclipse/mosquitto/blob/v2.0.0/ChangeLog.txt#L6
+    image: docker.io/eclipse-mosquitto:1.6
     user: mosquitto
     read_only: yes
     ports: ['127.0.0.1:1883:1883/tcp']
