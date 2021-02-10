@@ -21,6 +21,7 @@ DOCKER_TAG_VERSION := $(shell git describe --match=v* --dirty | sed -e 's/^v//')
 ARCH := $(shell arch)
 DOCKER_TAG_ARCH_SUFFIX_aarch64 := arm64
 DOCKER_TAG_ARCH_SUFFIX_armv6l := armv6
+DOCKER_TAG_ARCH_SUFFIX_armv7l := armv7
 DOCKER_TAG_ARCH_SUFFIX_x86_64 := amd64
 DOCKER_TAG_ARCH_SUFFIX = ${DOCKER_TAG_ARCH_SUFFIX_${ARCH}}
 DOCKER_TAG = ${DOCKER_TAG_VERSION}-${DOCKER_TAG_ARCH_SUFFIX}
