@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - dockerfile: split `pipenv install` into two stages to speed up image builds
 - dockerfile: `chmod` files copied from host to no longer require `o=rX` perms on host
+- dockerfile: add registry to base image specifier for `podman build`
+- dockerfile: add `--force` flag to `rm` invocation to avoid interactive questions while running `podman build`
 
 ## [0.6.0] - 2020-12-19
 ### Added

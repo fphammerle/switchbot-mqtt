@@ -2,7 +2,7 @@
 
 # not using python:3.*-alpine cause glib-dev package depends on python3
 # https://pkgs.alpinelinux.org/package/v3.11/main/aarch64/glib-dev
-ARG BASE_IMAGE=alpine:3.13.1
+ARG BASE_IMAGE=docker.io/alpine:3.13.1
 ARG SOURCE_DIR_PATH=/switchbot-mqtt
 
 
@@ -38,7 +38,7 @@ COPY --chown=build:nobody . $SOURCE_DIR_PATH
 RUN pipenv install --deploy --verbose \
     && pipenv graph \
     && pipenv run pip freeze \
-    && rm -r .git/ $PIPENV_CACHE_DIR \
+    && rm -rf .git/ $PIPENV_CACHE_DIR \
     && chmod -cR a+rX .
 
 # workaround for broken multi-stage copy
