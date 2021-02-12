@@ -17,13 +17,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 DOCKER_IMAGE_NAME := docker.io/fphammerle/switchbot-mqtt
-DOCKER_TAG_VERSION := $(shell git describe --match=v* --dirty | sed -e 's/^v//')
-ARCH := $(shell arch)
-DOCKER_TAG_ARCH_SUFFIX_aarch64 := arm64
-DOCKER_TAG_ARCH_SUFFIX_armv6l := armv6
-DOCKER_TAG_ARCH_SUFFIX_x86_64 := amd64
-DOCKER_TAG_ARCH_SUFFIX = ${DOCKER_TAG_ARCH_SUFFIX_${ARCH}}
-DOCKER_TAG = ${DOCKER_TAG_VERSION}-${DOCKER_TAG_ARCH_SUFFIX}
+DOCKER_TAG_VERSION := $(shell git describe --match=v* --dirty --abbrev=0 | sed -e 's/^v//')
+DOCKER_TAG = ${DOCKER_TAG_VERSION}-armv6
 
 .PHONY: docker-build podman-build docker-push
 
