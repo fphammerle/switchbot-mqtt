@@ -27,6 +27,66 @@ import switchbot_mqtt
 # pylint: disable=protected-access,
 
 
+@pytest.mark.parametrize(
+    "mac_address",
+    ("aa:bb:cc:dd:ee:ff", "aa:bb:cc:dd:ee:gg"),
+)
+@pytest.mark.parametrize(
+    ("position", "expected_payload"), [(0, b"0"), (100, b"100"), (42, b"42")]
+)
+def test__report_position(
+    caplog, mac_address: str, position: int, expected_payload: bytes
+):
+    with unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.__init__", return_value=None
+    ) as device_init_mock, caplog.at_level(logging.DEBUG):
+        actor = switchbot_mqtt._CurtainMotor(mac_address=mac_address)
+    device_init_mock.assert_called_once_with(
+        mac=mac_address,
+        # > The position of the curtain is saved in self._pos with 0 = open and 100 = closed.
+        # > [...] The parameter 'reverse_mode' reverse these values, [...]
+        # > The parameter is default set to True so that the definition of position
+        # > is the same as in Home Assistant.
+        # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L150
+        reverse_mode=True,
+    )
+    with unittest.mock.patch.object(
+        actor, "_mqtt_publish"
+    ) as publish_mock, unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.get_position", return_value=position
+    ):
+        actor._report_position(mqtt_client="dummy")
+    publish_mock.assert_called_once_with(
+        topic_levels=[
+            "homeassistant",
+            "cover",
+            "switchbot-curtain",
+            switchbot_mqtt._MQTTTopicPlaceholder.MAC_ADDRESS,
+            "position",
+        ],
+        payload=expected_payload,
+        mqtt_client="dummy",
+    )
+    assert not caplog.record_tuples
+
+
+@pytest.mark.parametrize("position", ("", 'lambda: print("")'))
+def test__report_position_invalid(caplog, position):
+    with unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.__init__", return_value=None
+    ), caplog.at_level(logging.DEBUG):
+        actor = switchbot_mqtt._CurtainMotor(mac_address="aa:bb:cc:dd:ee:ff")
+    with unittest.mock.patch.object(
+        actor, "_mqtt_publish"
+    ) as publish_mock, unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.get_position", return_value=position
+    ), pytest.raises(
+        ValueError
+    ):
+        actor._report_position(mqtt_client="dummy")
+    publish_mock.assert_not_called()
+
+
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
 @pytest.mark.parametrize(
     ("message_payload", "action_name"),
@@ -58,7 +118,7 @@ def test_execute_command(
             actor.execute_command(
                 mqtt_client="dummy", mqtt_message_payload=message_payload
             )
-    device_init_mock.assert_called_once_with(mac=mac_address)
+    device_init_mock.assert_called_once_with(mac=mac_address, reverse_mode=True)
     action_mock.assert_called_once_with()
     if command_successful:
         assert caplog.record_tuples == [
@@ -104,7 +164,7 @@ def test_execute_command_invalid_payload(caplog, mac_address, message_payload):
             actor.execute_command(
                 mqtt_client="dummy", mqtt_message_payload=message_payload
             )
-    device_mock.assert_called_once_with(mac=mac_address)
+    device_mock.assert_called_once_with(mac=mac_address, reverse_mode=True)
     assert not device_mock().mock_calls  # no methods called
     report_mock.assert_not_called()
     assert caplog.record_tuples == [

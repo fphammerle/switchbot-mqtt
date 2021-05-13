@@ -50,6 +50,7 @@ class _MQTTControlledActor(abc.ABC):
     MQTT_STATE_TOPIC_LEVELS = NotImplemented  # type: typing.List[_MQTTTopicLevel]
 
     def __init__(self, mac_address: str) -> None:
+        # alternative: pySwitchbot >=0.10.0 provides SwitchbotDevice.get_mac()
         self._mac_address = mac_address
 
     @abc.abstractmethod
@@ -199,9 +200,32 @@ class _CurtainMotor(_MQTTControlledActor):
         "state",
     ]
 
+    _MQTT_POSITION_TOPIC_LEVELS = _MQTT_TOPIC_LEVELS_PREFIX + [
+        "cover",
+        "switchbot-curtain",
+        _MQTTTopicPlaceholder.MAC_ADDRESS,
+        "position",
+    ]
+
     def __init__(self, mac_address) -> None:
-        self._device = switchbot.SwitchbotCurtain(mac=mac_address)
+        # > The position of the curtain is saved in self._pos with 0 = open and 100 = closed.
+        # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L150
+        self._device = switchbot.SwitchbotCurtain(mac=mac_address, reverse_mode=True)
         super().__init__(mac_address=mac_address)
+
+    def _report_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
+        # > position_closed integer (Optional, default: 0)
+        # > position_open integer (Optional, default: 100)
+        # https://www.home-assistant.io/integrations/cover.mqtt/#position_closed
+        # SwitchbotCurtain.get_position() returns a cached value within [0, 100].
+        # SwitchbotCurtain.open() and .close() update the position optimistically,
+        # SwitchbotCurtain.update() fetches the real position via bluetooth.
+        # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L202
+        self._mqtt_publish(
+            topic_levels=self._MQTT_POSITION_TOPIC_LEVELS,
+            payload=str(int(self._device.get_position())).encode(),
+            mqtt_client=mqtt_client,
+        )
 
     def execute_command(
         self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
