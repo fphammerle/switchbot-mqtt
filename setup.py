@@ -72,7 +72,7 @@ setuptools.setup(
     ],
     entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt:_main"]},
     install_requires=[
-        # >=0.10.0 for SwitchbotCurtain.get_position
+        # >=0.10.0 for SwitchbotCurtain.{update,get_position}
         "PySwitchbot>=0.10.0,<0.11",
         "paho-mqtt<2",
     ],
