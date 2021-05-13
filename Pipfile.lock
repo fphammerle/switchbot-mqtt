@@ -30,10 +30,10 @@
         },
         "pyswitchbot": {
             "hashes": [
-                "sha256:03fe4aa839a83e94ef455e562fe92427c4e16d41e055a59f7807f523752974b6",
-                "sha256:b24d3d2897d84cd51eb89e9b888043a71122ceebfb9a3f0c5e2f9bd98d412c81"
+                "sha256:5c2102b1c49f7e9b72d6213b9926a38b32897927569385f6e5830d0b1bb6762e",
+                "sha256:f2a80e123cf494a373dba17ba54995f18a024c774cc28f5b9f67a3bf0e08e7b5"
             ],
-            "version": "==0.9.1"
+            "version": "==0.10.0"
         },
         "sanitized-package": {
             "editable": true,
