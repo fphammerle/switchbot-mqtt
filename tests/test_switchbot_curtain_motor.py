@@ -94,6 +94,21 @@ def test__report_position_invalid(caplog, position):
     publish_mock.assert_not_called()
 
 
+def test__update_position():
+    with unittest.mock.patch("switchbot.SwitchbotCurtain.__init__", return_value=None):
+        actor = switchbot_mqtt._CurtainMotor(
+            mac_address="dummy", retry_count=21, password=None
+        )
+    with unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.update"
+    ) as update_mock, unittest.mock.patch.object(
+        actor, "_report_position"
+    ) as report_position_mock:
+        actor._update_position(mqtt_client="client")
+    update_mock.assert_called_once_with()
+    report_position_mock.assert_called_once_with(mqtt_client="client")
+
+
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
 @pytest.mark.parametrize("password", ["pa$$word", None])
 @pytest.mark.parametrize("retry_count", (2, 3))
@@ -131,7 +146,9 @@ def test_execute_command(
             actor, "report_state"
         ) as report_mock, unittest.mock.patch(
             action_name, return_value=command_successful
-        ) as action_mock:
+        ) as action_mock, unittest.mock.patch.object(
+            actor, "_update_position"
+        ) as update_position_mock:
             actor.execute_command(
                 mqtt_client="dummy", mqtt_message_payload=message_payload
             )
@@ -170,6 +187,10 @@ def test_execute_command(
             )
         ]
         report_mock.assert_not_called()
+    if action_name == "switchbot.SwitchbotCurtain.stop" and command_successful:
+        update_position_mock.assert_called_once_with(mqtt_client="dummy")
+    else:
+        update_position_mock.assert_not_called()
 
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])

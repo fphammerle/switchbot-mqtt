@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Report position of curtain motor on topic  `homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position`
+  after sending stop command.
 
 ## [1.0.0] - 2021-07-25
 ### Added

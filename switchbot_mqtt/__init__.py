@@ -265,6 +265,10 @@ class _CurtainMotor(_MQTTControlledActor):
             mqtt_client=mqtt_client,
         )
 
+    def _update_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
+        self._device.update()
+        self._report_position(mqtt_client=mqtt_client)
+
     def execute_command(
         self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
     ) -> None:
@@ -293,6 +297,7 @@ class _CurtainMotor(_MQTTControlledActor):
                 # https://www.home-assistant.io/integrations/cover.mqtt/#configuration-variables
                 # https://community.home-assistant.io/t/mqtt-how-to-remove-retained-messages/79029/2
                 self.report_state(mqtt_client=mqtt_client, state=b"")
+                self._update_position(mqtt_client=mqtt_client)
         else:
             _LOGGER.warning(
                 "unexpected payload %r (expected 'OPEN', 'CLOSE', or 'STOP')",
