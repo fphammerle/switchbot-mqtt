@@ -104,21 +104,37 @@ class _MQTTControlledActor(abc.ABC):
             sub=command_topic, callback=cls._mqtt_command_callback
         )
 
-    def report_state(self, state: bytes, mqtt_client: paho.mqtt.client.Client) -> None:
-        state_topic = "/".join(
+    def _mqtt_publish(
+        self,
+        topic_levels: typing.List[_MQTTTopicLevel],
+        payload: bytes,
+        mqtt_client: paho.mqtt.client.Client,
+    ) -> None:
+        topic = "/".join(
             self._mac_address
             if l == _MQTTTopicPlaceholder.MAC_ADDRESS
             else typing.cast(str, l)
-            for l in self.MQTT_STATE_TOPIC_LEVELS
+            for l in topic_levels
         )
         # https://pypi.org/project/paho-mqtt/#publishing
-        _LOGGER.debug("publishing topic=%s payload=%r", state_topic, state)
+        _LOGGER.debug("publishing topic=%s payload=%r", topic, payload)
         message_info = mqtt_client.publish(
-            topic=state_topic, payload=state, retain=True
+            topic=topic, payload=payload, retain=True
         )  # type: paho.mqtt.client.MQTTMessageInfo
         # wait before checking status?
         if message_info.rc != paho.mqtt.client.MQTT_ERR_SUCCESS:
-            _LOGGER.error("failed to publish state (rc=%d)", message_info.rc)
+            _LOGGER.error(
+                "Failed to publish MQTT message on topic %s (rc=%d)",
+                topic,
+                message_info.rc,
+            )
+
+    def report_state(self, state: bytes, mqtt_client: paho.mqtt.client.Client) -> None:
+        self._mqtt_publish(
+            topic_levels=self.MQTT_STATE_TOPIC_LEVELS,
+            payload=state,
+            mqtt_client=mqtt_client,
+        )
 
 
 class _ButtonAutomator(_MQTTControlledActor):
@@ -252,6 +268,7 @@ def _run(
     elif mqtt_password:
         raise ValueError("Missing MQTT username")
     mqtt_client.connect(host=mqtt_host, port=mqtt_port)
+    # https://github.com/eclipse/paho.mqtt.python/blob/master/src/paho/mqtt/client.py#L1740
     mqtt_client.loop_forever()
 
 

@@ -387,6 +387,8 @@ def test__report_state(
             (
                 "switchbot_mqtt",
                 logging.ERROR,
-                "failed to publish state (rc={})".format(return_code),
+                "Failed to publish MQTT message on topic {} (rc={})".format(
+                    expected_topic, return_code
+                ),
             )
         ]
