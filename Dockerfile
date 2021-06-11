@@ -31,7 +31,7 @@ ENV PIPENV_CACHE_DIR=/tmp/pipenv-cache \
     PIPENV_VENV_IN_PROJECT=yes-please \
     PATH=/home/build/.local/bin:$PATH
 # `sponge` is not pre-installed
-RUN jq 'del(.default."switchbot-mqtt")' Pipfile.lock > Pipfile.lock~ \
+RUN jq 'del(.default."switchbot-mqtt", .default."sanitized-package")' Pipfile.lock > Pipfile.lock~ \
     && mv Pipfile.lock~ Pipfile.lock \
     && pipenv install --deploy --verbose
 COPY --chown=build:nobody . $SOURCE_DIR_PATH
