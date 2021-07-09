@@ -155,7 +155,7 @@ class _ButtonAutomator(_MQTTControlledActor):
     ]
 
     def __init__(self, mac_address) -> None:
-        self._device = switchbot.Switchbot(mac=mac_address)
+        self._device = switchbot.Switchbot(mac=mac_address, retry_count=10)
         super().__init__(mac_address=mac_address)
 
     def execute_command(
@@ -200,7 +200,7 @@ class _CurtainMotor(_MQTTControlledActor):
     ]
 
     def __init__(self, mac_address) -> None:
-        self._device = switchbot.SwitchbotCurtain(mac=mac_address)
+        self._device = switchbot.SwitchbotCurtain(mac=mac_address, retry_count=10)
         super().__init__(mac_address=mac_address)
 
     def execute_command(
