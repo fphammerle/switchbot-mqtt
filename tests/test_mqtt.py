@@ -26,11 +26,13 @@ from paho.mqtt.client import MQTT_ERR_QUEUE_SIZE, MQTT_ERR_SUCCESS, MQTTMessage,
 import switchbot_mqtt
 
 # pylint: disable=protected-access
+# pylint: disable=too-many-arguments; these are tests, no API
 
 
 @pytest.mark.parametrize("mqtt_host", ["mqtt-broker.local"])
 @pytest.mark.parametrize("mqtt_port", [1833])
-def test__run(caplog, mqtt_host, mqtt_port):
+@pytest.mark.parametrize("retry_count", [3, 21])
+def test__run(caplog, mqtt_host, mqtt_port, retry_count):
     with unittest.mock.patch(
         "paho.mqtt.client.Client"
     ) as mqtt_client_mock, caplog.at_level(logging.DEBUG):
@@ -39,8 +41,11 @@ def test__run(caplog, mqtt_host, mqtt_port):
             mqtt_port=mqtt_port,
             mqtt_username=None,
             mqtt_password=None,
+            retry_count=retry_count,
         )
-    mqtt_client_mock.assert_called_once_with()
+    mqtt_client_mock.assert_called_once_with(
+        userdata=switchbot_mqtt._MQTTCallbackUserdata(retry_count=retry_count)
+    )
     assert not mqtt_client_mock().username_pw_set.called
     mqtt_client_mock().connect.assert_called_once_with(host=mqtt_host, port=mqtt_port)
     mqtt_client_mock().socket().getpeername.return_value = (mqtt_host, mqtt_port)
@@ -96,8 +101,11 @@ def test__run_authentication(mqtt_host, mqtt_port, mqtt_username, mqtt_password)
             mqtt_port=mqtt_port,
             mqtt_username=mqtt_username,
             mqtt_password=mqtt_password,
+            retry_count=7,
         )
-    mqtt_client_mock.assert_called_once_with()
+    mqtt_client_mock.assert_called_once_with(
+        userdata=switchbot_mqtt._MQTTCallbackUserdata(retry_count=7)
+    )
     mqtt_client_mock().username_pw_set.assert_called_once_with(
         username=mqtt_username, password=mqtt_password
     )
@@ -114,6 +122,7 @@ def test__run_authentication_missing_username(mqtt_host, mqtt_port, mqtt_passwor
                 mqtt_port=mqtt_port,
                 mqtt_username=None,
                 mqtt_password=mqtt_password,
+                retry_count=3,
             )
 
 
@@ -164,24 +173,27 @@ def test__run_authentication_missing_username(mqtt_host, mqtt_port, mqtt_passwor
         ),
     ],
 )
+@pytest.mark.parametrize("retry_count", (3, 42))
 def test__mqtt_command_callback(
     caplog,
     command_topic_levels: typing.List[switchbot_mqtt._MQTTTopicLevel],
     topic: bytes,
     payload: bytes,
     expected_mac_address: str,
+    retry_count: int,
 ):
     class _ActorMock(switchbot_mqtt._MQTTControlledActor):
         MQTT_COMMAND_TOPIC_LEVELS = command_topic_levels
 
-        def __init__(self, mac_address):
-            super().__init__(mac_address=mac_address)
+        def __init__(self, mac_address, retry_count):
+            super().__init__(mac_address=mac_address, retry_count=retry_count)
 
         def execute_command(self, mqtt_message_payload: bytes, mqtt_client: Client):
             pass
 
     message = MQTTMessage(topic=topic)
     message.payload = payload
+    callback_userdata = switchbot_mqtt._MQTTCallbackUserdata(retry_count=retry_count)
     with unittest.mock.patch.object(
         _ActorMock, "__init__", return_value=None
     ) as init_mock, unittest.mock.patch.object(
@@ -189,8 +201,10 @@ def test__mqtt_command_callback(
     ) as execute_command_mock, caplog.at_level(
         logging.DEBUG
     ):
-        _ActorMock._mqtt_command_callback("client_dummy", None, message)
-    init_mock.assert_called_once_with(mac_address=expected_mac_address)
+        _ActorMock._mqtt_command_callback("client_dummy", callback_userdata, message)
+    init_mock.assert_called_once_with(
+        mac_address=expected_mac_address, retry_count=retry_count
+    )
     execute_command_mock.assert_called_once_with(
         mqtt_client="client_dummy", mqtt_message_payload=payload
     )
@@ -217,8 +231,8 @@ def test__mqtt_command_callback_unexpected_topic(caplog, topic: bytes, payload: 
             switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
         )
 
-        def __init__(self, mac_address):
-            super().__init__(mac_address=mac_address)
+        def __init__(self, mac_address, retry_count):
+            super().__init__(mac_address=mac_address, retry_count=retry_count)
 
         def execute_command(self, mqtt_message_payload: bytes, mqtt_client: Client):
             pass
@@ -232,7 +246,9 @@ def test__mqtt_command_callback_unexpected_topic(caplog, topic: bytes, payload: 
     ) as execute_command_mock, caplog.at_level(
         logging.DEBUG
     ):
-        _ActorMock._mqtt_command_callback("client_dummy", None, message)
+        _ActorMock._mqtt_command_callback(
+            "client_dummy", switchbot_mqtt._MQTTCallbackUserdata(retry_count=3), message
+        )
     init_mock.assert_not_called()
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
@@ -258,8 +274,8 @@ def test__mqtt_command_callback_invalid_mac_address(
             switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
         )
 
-        def __init__(self, mac_address):
-            super().__init__(mac_address=mac_address)
+        def __init__(self, mac_address, retry_count):
+            super().__init__(mac_address=mac_address, retry_count=retry_count)
 
         def execute_command(self, mqtt_message_payload: bytes, mqtt_client: Client):
             pass
@@ -274,7 +290,11 @@ def test__mqtt_command_callback_invalid_mac_address(
     ) as execute_command_mock, caplog.at_level(
         logging.DEBUG
     ):
-        _ActorMock._mqtt_command_callback("client_dummy", None, message)
+        _ActorMock._mqtt_command_callback(
+            "client_dummy",
+            switchbot_mqtt._MQTTCallbackUserdata(retry_count=None),
+            message,
+        )
     init_mock.assert_not_called()
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
@@ -301,8 +321,8 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
             switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
         )
 
-        def __init__(self, mac_address):
-            super().__init__(mac_address=mac_address)
+        def __init__(self, mac_address, retry_count):
+            super().__init__(mac_address=mac_address, retry_count=retry_count)
 
         def execute_command(self, mqtt_message_payload: bytes, mqtt_client: Client):
             pass
@@ -317,7 +337,11 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
     ) as execute_command_mock, caplog.at_level(
         logging.DEBUG
     ):
-        _ActorMock._mqtt_command_callback("client_dummy", None, message)
+        _ActorMock._mqtt_command_callback(
+            "client_dummy",
+            switchbot_mqtt._MQTTCallbackUserdata(retry_count=None),
+            message,
+        )
     init_mock.assert_not_called()
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
@@ -360,8 +384,8 @@ def test__report_state(
     class _ActorMock(switchbot_mqtt._MQTTControlledActor):
         MQTT_STATE_TOPIC_LEVELS = state_topic_levels
 
-        def __init__(self, mac_address):
-            super().__init__(mac_address=mac_address)
+        def __init__(self, mac_address, retry_count):
+            super().__init__(mac_address=mac_address, retry_count=retry_count)
 
         def execute_command(self, mqtt_message_payload: bytes, mqtt_client: Client):
             pass
@@ -369,7 +393,7 @@ def test__report_state(
     mqtt_client_mock = unittest.mock.MagicMock()
     mqtt_client_mock.publish.return_value.rc = return_code
     with caplog.at_level(logging.DEBUG):
-        _ActorMock(mac_address=mac_address).report_state(
+        _ActorMock(mac_address=mac_address, retry_count=3).report_state(
             state=state, mqtt_client=mqtt_client_mock
         )
     mqtt_client_mock.publish.assert_called_once_with(

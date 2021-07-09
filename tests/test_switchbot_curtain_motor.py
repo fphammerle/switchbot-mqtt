@@ -25,9 +25,11 @@ import pytest
 import switchbot_mqtt
 
 # pylint: disable=protected-access,
+# pylint: disable=too-many-arguments; these are tests, no API
 
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
+@pytest.mark.parametrize("retry_count", (2, 3))
 @pytest.mark.parametrize(
     ("message_payload", "action_name"),
     [
@@ -44,12 +46,14 @@ import switchbot_mqtt
 )
 @pytest.mark.parametrize("command_successful", [True, False])
 def test_execute_command(
-    caplog, mac_address, message_payload, action_name, command_successful
+    caplog, mac_address, retry_count, message_payload, action_name, command_successful
 ):
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain.__init__", return_value=None
     ) as device_init_mock, caplog.at_level(logging.INFO):
-        actor = switchbot_mqtt._CurtainMotor(mac_address=mac_address)
+        actor = switchbot_mqtt._CurtainMotor(
+            mac_address=mac_address, retry_count=retry_count
+        )
         with unittest.mock.patch.object(
             actor, "report_state"
         ) as report_mock, unittest.mock.patch(
@@ -58,7 +62,7 @@ def test_execute_command(
             actor.execute_command(
                 mqtt_client="dummy", mqtt_message_payload=message_payload
             )
-    device_init_mock.assert_called_once_with(mac=mac_address)
+    device_init_mock.assert_called_once_with(mac=mac_address, retry_count=retry_count)
     action_mock.assert_called_once_with()
     if command_successful:
         assert caplog.record_tuples == [
@@ -99,12 +103,12 @@ def test_execute_command_invalid_payload(caplog, mac_address, message_payload):
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
     ) as device_mock, caplog.at_level(logging.INFO):
-        actor = switchbot_mqtt._CurtainMotor(mac_address=mac_address)
+        actor = switchbot_mqtt._CurtainMotor(mac_address=mac_address, retry_count=7)
         with unittest.mock.patch.object(actor, "report_state") as report_mock:
             actor.execute_command(
                 mqtt_client="dummy", mqtt_message_payload=message_payload
             )
-    device_mock.assert_called_once_with(mac=mac_address)
+    device_mock.assert_called_once_with(mac=mac_address, retry_count=7)
     assert not device_mock().mock_calls  # no methods called
     report_mock.assert_not_called()
     assert caplog.record_tuples == [
@@ -133,9 +137,9 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
             "Failed to connect to peripheral {}, addr type: random".format(mac_address)
         ),
     ), caplog.at_level(logging.ERROR):
-        switchbot_mqtt._CurtainMotor(mac_address=mac_address).execute_command(
-            mqtt_client="dummy", mqtt_message_payload=message_payload
-        )
+        switchbot_mqtt._CurtainMotor(
+            mac_address=mac_address, retry_count=10
+        ).execute_command(mqtt_client="dummy", mqtt_message_payload=message_payload)
     assert caplog.record_tuples == [
         (
             "switchbot",

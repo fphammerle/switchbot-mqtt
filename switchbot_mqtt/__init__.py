@@ -18,6 +18,7 @@
 
 import abc
 import argparse
+import collections
 import enum
 import logging
 import pathlib
@@ -45,11 +46,15 @@ def _mac_address_valid(mac_address: str) -> bool:
     return _MAC_ADDRESS_REGEX.match(mac_address.lower()) is not None
 
 
+_MQTTCallbackUserdata = collections.namedtuple("_MQTTCallbackUserdata", ["retry_count"])
+
+
 class _MQTTControlledActor(abc.ABC):
     MQTT_COMMAND_TOPIC_LEVELS = NotImplemented  # type: typing.List[_MQTTTopicLevel]
     MQTT_STATE_TOPIC_LEVELS = NotImplemented  # type: typing.List[_MQTTTopicLevel]
 
-    def __init__(self, mac_address: str) -> None:
+    @abc.abstractmethod
+    def __init__(self, mac_address: str, retry_count: int) -> None:
         self._mac_address = mac_address
 
     @abc.abstractmethod
@@ -62,7 +67,7 @@ class _MQTTControlledActor(abc.ABC):
     def _mqtt_command_callback(
         cls,
         mqtt_client: paho.mqtt.client.Client,
-        userdata: None,
+        userdata: _MQTTCallbackUserdata,
         message: paho.mqtt.client.MQTTMessage,
     ) -> None:
         # pylint: disable=unused-argument; callback
@@ -88,7 +93,7 @@ class _MQTTControlledActor(abc.ABC):
         if not _mac_address_valid(mac_address):
             _LOGGER.warning("invalid mac address %s", mac_address)
             return
-        cls(mac_address=mac_address).execute_command(
+        cls(mac_address=mac_address, retry_count=userdata.retry_count).execute_command(
             mqtt_message_payload=message.payload, mqtt_client=mqtt_client
         )
 
@@ -101,7 +106,8 @@ class _MQTTControlledActor(abc.ABC):
         _LOGGER.info("subscribing to MQTT topic %r", command_topic)
         mqtt_client.subscribe(command_topic)
         mqtt_client.message_callback_add(
-            sub=command_topic, callback=cls._mqtt_command_callback
+            sub=command_topic,
+            callback=cls._mqtt_command_callback,
         )
 
     def _mqtt_publish(
@@ -154,9 +160,9 @@ class _ButtonAutomator(_MQTTControlledActor):
         "state",
     ]
 
-    def __init__(self, mac_address) -> None:
-        self._device = switchbot.Switchbot(mac=mac_address)
-        super().__init__(mac_address=mac_address)
+    def __init__(self, mac_address: str, retry_count: int) -> None:
+        self._device = switchbot.Switchbot(mac=mac_address, retry_count=retry_count)
+        super().__init__(mac_address=mac_address, retry_count=retry_count)
 
     def execute_command(
         self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
@@ -199,9 +205,11 @@ class _CurtainMotor(_MQTTControlledActor):
         "state",
     ]
 
-    def __init__(self, mac_address) -> None:
-        self._device = switchbot.SwitchbotCurtain(mac=mac_address)
-        super().__init__(mac_address=mac_address)
+    def __init__(self, mac_address: str, retry_count: int) -> None:
+        self._device = switchbot.SwitchbotCurtain(
+            mac=mac_address, retry_count=retry_count
+        )
+        super().__init__(mac_address=mac_address, retry_count=retry_count)
 
     def execute_command(
         self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
@@ -258,9 +266,12 @@ def _run(
     mqtt_port: int,
     mqtt_username: typing.Optional[str],
     mqtt_password: typing.Optional[str],
+    retry_count: int,
 ) -> None:
     # https://pypi.org/project/paho-mqtt/
-    mqtt_client = paho.mqtt.client.Client()
+    mqtt_client = paho.mqtt.client.Client(
+        userdata=_MQTTCallbackUserdata(retry_count=retry_count)
+    )
     mqtt_client.on_connect = _mqtt_on_connect
     _LOGGER.info("connecting to MQTT broker %s:%d", mqtt_host, mqtt_port)
     if mqtt_username:
@@ -294,6 +305,14 @@ def _main() -> None:
         dest="mqtt_password_path",
         help="stripping trailing newline",
     )
+    argparser.add_argument(
+        "--retries",
+        dest="retry_count",
+        type=int,
+        default=switchbot.DEFAULT_RETRY_COUNT,
+        help="Maximum number of attempts to send a command to a SwitchBot device"
+        " (default: %(default)d)",
+    )
     args = argparser.parse_args()
     if args.mqtt_password_path:
         # .read_text() replaces \r\n with \n
@@ -309,4 +328,5 @@ def _main() -> None:
         mqtt_port=args.mqtt_port,
         mqtt_username=args.mqtt_username,
         mqtt_password=mqtt_password,
+        retry_count=args.retry_count,
     )

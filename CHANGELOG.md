@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Command-line argument `--retries` to alter maximum number of attempts to send a command
+  to a SwitchBot device (default unchanged)
+
 ### Fixed
 - dockerfile: split `pipenv install` into two stages to speed up image builds
 - dockerfile: `chmod` files copied from host to no longer require `o=rX` perms on host
