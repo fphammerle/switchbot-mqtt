@@ -27,11 +27,14 @@ import switchbot_mqtt
 def test_abstract():
     with pytest.raises(TypeError, match=r"\babstract class\b"):
         # pylint: disable=abstract-class-instantiated
-        switchbot_mqtt._MQTTControlledActor(mac_address=None)
+        switchbot_mqtt._MQTTControlledActor(mac_address=None, retry_count=21)
 
 
 def test_execute_command_abstract():
     class _ActorMock(switchbot_mqtt._MQTTControlledActor):
+        def __init__(self, mac_address: str, retry_count: int) -> None:
+            super().__init__(mac_address=mac_address, retry_count=retry_count)
+
         def execute_command(
             self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
         ) -> None:
@@ -39,6 +42,6 @@ def test_execute_command_abstract():
                 mqtt_message_payload=mqtt_message_payload, mqtt_client=mqtt_client
             )
 
-    actor = _ActorMock(mac_address=None)
+    actor = _ActorMock(mac_address=None, retry_count=42)
     with pytest.raises(NotImplementedError):
         actor.execute_command(mqtt_message_payload=b"dummy", mqtt_client="dummy")

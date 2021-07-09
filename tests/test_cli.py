@@ -22,6 +22,8 @@ import pytest
 
 import switchbot_mqtt
 
+# pylint: disable=too-many-arguments; these are tests, no API
+
 
 @pytest.mark.parametrize(
     (
@@ -30,6 +32,7 @@ import switchbot_mqtt
         "expected_mqtt_port",
         "expected_username",
         "expected_password",
+        "expected_retry_count",
     ),
     [
         (
@@ -38,6 +41,7 @@ import switchbot_mqtt
             1883,
             None,
             None,
+            3,
         ),
         (
             ["", "--mqtt-host", "mqtt-broker.local", "--mqtt-port", "8883"],
@@ -45,6 +49,7 @@ import switchbot_mqtt
             8883,
             None,
             None,
+            3,
         ),
         (
             ["", "--mqtt-host", "mqtt-broker.local", "--mqtt-username", "me"],
@@ -52,6 +57,7 @@ import switchbot_mqtt
             1883,
             "me",
             None,
+            3,
         ),
         (
             [
@@ -62,16 +68,24 @@ import switchbot_mqtt
                 "me",
                 "--mqtt-password",
                 "secret",
+                "--retries",
+                "21",
             ],
             "mqtt-broker.local",
             1883,
             "me",
             "secret",
+            21,
         ),
     ],
 )
 def test__main(
-    argv, expected_mqtt_host, expected_mqtt_port, expected_username, expected_password
+    argv,
+    expected_mqtt_host,
+    expected_mqtt_port,
+    expected_username,
+    expected_password,
+    expected_retry_count,
 ):
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv", argv
@@ -83,6 +97,7 @@ def test__main(
         mqtt_port=expected_mqtt_port,
         mqtt_username=expected_username,
         mqtt_password=expected_password,
+        retry_count=expected_retry_count,
     )
 
 
@@ -123,6 +138,7 @@ def test__main_password_file(tmpdir, password_file_content, expected_password):
         mqtt_port=1883,
         mqtt_username="me",
         mqtt_password=expected_password,
+        retry_count=3,
     )
 
 
