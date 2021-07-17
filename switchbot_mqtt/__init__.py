@@ -46,7 +46,16 @@ def _mac_address_valid(mac_address: str) -> bool:
     return _MAC_ADDRESS_REGEX.match(mac_address.lower()) is not None
 
 
-_MQTTCallbackUserdata = collections.namedtuple("_MQTTCallbackUserdata", ["retry_count"])
+class _MQTTCallbackUserdata:
+    # pylint: disable=too-few-public-methods; @dataclasses.dataclass when python_requires>=3.7
+    def __init__(
+        self, retry_count: int, device_passwords: typing.Dict[str, str]
+    ) -> None:
+        self.retry_count = retry_count
+        self.device_passwords = device_passwords
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, type(self)) and vars(self) == vars(other)
 
 
 class _MQTTControlledActor(abc.ABC):
@@ -54,7 +63,9 @@ class _MQTTControlledActor(abc.ABC):
     MQTT_STATE_TOPIC_LEVELS = NotImplemented  # type: typing.List[_MQTTTopicLevel]
 
     @abc.abstractmethod
-    def __init__(self, mac_address: str, retry_count: int) -> None:
+    def __init__(
+        self, mac_address: str, retry_count: int, password: typing.Optional[str]
+    ) -> None:
         self._mac_address = mac_address
 
     @abc.abstractmethod
@@ -93,7 +104,12 @@ class _MQTTControlledActor(abc.ABC):
         if not _mac_address_valid(mac_address):
             _LOGGER.warning("invalid mac address %s", mac_address)
             return
-        cls(mac_address=mac_address, retry_count=userdata.retry_count).execute_command(
+        actor = cls(
+            mac_address=mac_address,
+            retry_count=userdata.retry_count,
+            password=userdata.device_passwords.get(mac_address, None),
+        )
+        actor.execute_command(
             mqtt_message_payload=message.payload, mqtt_client=mqtt_client
         )
 
@@ -160,9 +176,15 @@ class _ButtonAutomator(_MQTTControlledActor):
         "state",
     ]
 
-    def __init__(self, mac_address: str, retry_count: int) -> None:
-        self._device = switchbot.Switchbot(mac=mac_address, retry_count=retry_count)
-        super().__init__(mac_address=mac_address, retry_count=retry_count)
+    def __init__(
+        self, mac_address: str, retry_count: int, password: typing.Optional[None]
+    ) -> None:
+        self._device = switchbot.Switchbot(
+            mac=mac_address, password=password, retry_count=retry_count
+        )
+        super().__init__(
+            mac_address=mac_address, retry_count=retry_count, password=password
+        )
 
     def execute_command(
         self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
@@ -205,11 +227,15 @@ class _CurtainMotor(_MQTTControlledActor):
         "state",
     ]
 
-    def __init__(self, mac_address: str, retry_count: int) -> None:
+    def __init__(
+        self, mac_address: str, retry_count: int, password: typing.Optional[None]
+    ) -> None:
         self._device = switchbot.SwitchbotCurtain(
-            mac=mac_address, retry_count=retry_count
+            mac=mac_address, password=password, retry_count=retry_count
         )
-        super().__init__(mac_address=mac_address, retry_count=retry_count)
+        super().__init__(
+            mac_address=mac_address, retry_count=retry_count, password=password
+        )
 
     def execute_command(
         self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
@@ -248,7 +274,7 @@ class _CurtainMotor(_MQTTControlledActor):
 
 def _mqtt_on_connect(
     mqtt_client: paho.mqtt.client.Client,
-    user_data: typing.Any,
+    userdata: _MQTTCallbackUserdata,
     flags: typing.Dict,
     return_code: int,
 ) -> None:
@@ -270,7 +296,7 @@ def _run(
 ) -> None:
     # https://pypi.org/project/paho-mqtt/
     mqtt_client = paho.mqtt.client.Client(
-        userdata=_MQTTCallbackUserdata(retry_count=retry_count)
+        userdata=_MQTTCallbackUserdata(retry_count=retry_count, device_passwords={})
     )
     mqtt_client.on_connect = _mqtt_on_connect
     _LOGGER.info("connecting to MQTT broker %s:%d", mqtt_host, mqtt_port)

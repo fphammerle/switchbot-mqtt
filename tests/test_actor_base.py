@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import typing
+
 import paho.mqtt.client
 import pytest
 
@@ -27,13 +29,19 @@ import switchbot_mqtt
 def test_abstract():
     with pytest.raises(TypeError, match=r"\babstract class\b"):
         # pylint: disable=abstract-class-instantiated
-        switchbot_mqtt._MQTTControlledActor(mac_address=None, retry_count=21)
+        switchbot_mqtt._MQTTControlledActor(
+            mac_address=None, retry_count=21, password=None
+        )
 
 
 def test_execute_command_abstract():
     class _ActorMock(switchbot_mqtt._MQTTControlledActor):
-        def __init__(self, mac_address: str, retry_count: int) -> None:
-            super().__init__(mac_address=mac_address, retry_count=retry_count)
+        def __init__(
+            self, mac_address: str, retry_count: int, password: typing.Optional[str]
+        ) -> None:
+            super().__init__(
+                mac_address=mac_address, retry_count=retry_count, password=password
+            )
 
         def execute_command(
             self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
@@ -42,6 +50,6 @@ def test_execute_command_abstract():
                 mqtt_message_payload=mqtt_message_payload, mqtt_client=mqtt_client
             )
 
-    actor = _ActorMock(mac_address=None, retry_count=42)
+    actor = _ActorMock(mac_address=None, retry_count=42, password=None)
     with pytest.raises(NotImplementedError):
         actor.execute_command(mqtt_message_payload=b"dummy", mqtt_client="dummy")

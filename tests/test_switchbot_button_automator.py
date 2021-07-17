@@ -29,6 +29,7 @@ import switchbot_mqtt
 
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
+@pytest.mark.parametrize("password", (None, "secret"))
 @pytest.mark.parametrize("retry_count", (3, 21))
 @pytest.mark.parametrize(
     ("message_payload", "action_name"),
@@ -43,13 +44,19 @@ import switchbot_mqtt
 )
 @pytest.mark.parametrize("command_successful", [True, False])
 def test_execute_command(
-    caplog, mac_address, retry_count, message_payload, action_name, command_successful
+    caplog,
+    mac_address,
+    password,
+    retry_count,
+    message_payload,
+    action_name,
+    command_successful,
 ):
     with unittest.mock.patch(
         "switchbot.Switchbot.__init__", return_value=None
     ) as device_init_mock, caplog.at_level(logging.INFO):
         actor = switchbot_mqtt._ButtonAutomator(
-            mac_address=mac_address, retry_count=retry_count
+            mac_address=mac_address, retry_count=retry_count, password=password
         )
         with unittest.mock.patch.object(
             actor, "report_state"
@@ -59,7 +66,9 @@ def test_execute_command(
             actor.execute_command(
                 mqtt_client="dummy", mqtt_message_payload=message_payload
             )
-    device_init_mock.assert_called_once_with(mac=mac_address, retry_count=retry_count)
+    device_init_mock.assert_called_once_with(
+        mac=mac_address, password=password, retry_count=retry_count
+    )
     action_mock.assert_called_once_with()
     if command_successful:
         assert caplog.record_tuples == [
@@ -93,12 +102,14 @@ def test_execute_command_invalid_payload(caplog, mac_address, message_payload):
     with unittest.mock.patch("switchbot.Switchbot") as device_mock, caplog.at_level(
         logging.INFO
     ):
-        actor = switchbot_mqtt._ButtonAutomator(mac_address=mac_address, retry_count=21)
+        actor = switchbot_mqtt._ButtonAutomator(
+            mac_address=mac_address, retry_count=21, password=None
+        )
         with unittest.mock.patch.object(actor, "report_state") as report_mock:
             actor.execute_command(
                 mqtt_client="dummy", mqtt_message_payload=message_payload
             )
-    device_mock.assert_called_once_with(mac=mac_address, retry_count=21)
+    device_mock.assert_called_once_with(mac=mac_address, retry_count=21, password=None)
     assert not device_mock().mock_calls  # no methods called
     report_mock.assert_not_called()
     assert caplog.record_tuples == [
@@ -126,7 +137,7 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
         ),
     ), caplog.at_level(logging.ERROR):
         switchbot_mqtt._ButtonAutomator(
-            mac_address=mac_address, retry_count=3
+            mac_address=mac_address, retry_count=3, password=None
         ).execute_command(mqtt_client="dummy", mqtt_message_payload=message_payload)
     assert caplog.record_tuples == [
         (
