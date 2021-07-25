@@ -5,10 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.0.0] - 2021-07-25
 ### Added
-- optional command-line parameter `--device-password-file`
-  providing path to JSON file mapping mac addresses to the password
-  that is required to control the respective switchbot device.
+- support for password-protected switchbot devices
+  via optional command-line parameter `--device-password-file`
+  (json file mapping mac addresses to the respective password)
 
 ## [0.7.0] - 2021-07-09
 ### Added
@@ -70,7 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subscribe to `homeassistant/switch/switchbot/+/set`.
   Handle `ON` and `OFF` messages.
 
-[Unreleased]: https://github.com/fphammerle/switchbot-mqtt/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/fphammerle/switchbot-mqtt/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v0.7.0...v1.0.0
 [0.7.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v0.4.1...v0.5.0
