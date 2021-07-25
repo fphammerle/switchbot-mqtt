@@ -62,6 +62,17 @@ and provide its path via the `--device-password-file` option:
 $ switchbot-mqtt --device-password-file /some/where/switchbot-passwords.json …
 ```
 
+### MQTT Authentication
+
+```sh
+switchbot-mqtt --mqtt-username me --mqtt-password secret …
+# or
+switchbot-mqtt --mqtt-username me --mqtt-password-file /var/lib/secrets/mqtt/password …
+```
+
+⚠️  `--mqtt-password` leaks the password to other users on the same machine,
+if `/proc` is mounted with `hidepid=0` (default).
+
 ## Home Assistant 🏡
 
 ### Rationale
@@ -139,17 +150,6 @@ services:
     #- MQTT_PASSWORD=password
     restart: unless-stopped
 ```
-
-## MQTT Authentication
-
-```sh
-switchbot-mqtt --mqtt-username me --mqtt-password secret …
-# or
-switchbot-mqtt --mqtt-username me --mqtt-password-file /var/lib/secrets/mqtt/password …
-```
-
-⚠️  `--mqtt-password` leaks the password to other users on the same machine,
-if `/proc` is mounted with `hidepid=0` (default).
 
 ## Alternatives
 
