@@ -20,6 +20,7 @@ import abc
 import argparse
 import collections
 import enum
+import json
 import logging
 import pathlib
 import re
@@ -293,10 +294,13 @@ def _run(
     mqtt_username: typing.Optional[str],
     mqtt_password: typing.Optional[str],
     retry_count: int,
+    device_passwords: typing.Dict[str, str],
 ) -> None:
     # https://pypi.org/project/paho-mqtt/
     mqtt_client = paho.mqtt.client.Client(
-        userdata=_MQTTCallbackUserdata(retry_count=retry_count, device_passwords={})
+        userdata=_MQTTCallbackUserdata(
+            retry_count=retry_count, device_passwords=device_passwords
+        )
     )
     mqtt_client.on_connect = _mqtt_on_connect
     _LOGGER.info("connecting to MQTT broker %s:%d", mqtt_host, mqtt_port)
@@ -332,6 +336,14 @@ def _main() -> None:
         help="stripping trailing newline",
     )
     argparser.add_argument(
+        "--device-password-file",
+        type=pathlib.Path,
+        metavar="PATH",
+        dest="device_password_path",
+        help="path to json file mapping mac addresses of switchbot devices to passwords, e.g. "
+        + json.dumps({"11:22:33:44:55:66": "password", "aa:bb:cc:dd:ee:ff": "secret"}),
+    )
+    argparser.add_argument(
         "--retries",
         dest="retry_count",
         type=int,
@@ -349,10 +361,15 @@ def _main() -> None:
             mqtt_password = mqtt_password[:-1]
     else:
         mqtt_password = args.mqtt_password
+    if args.device_password_path:
+        device_passwords = json.loads(args.device_password_path.read_text())
+    else:
+        device_passwords = {}
     _run(
         mqtt_host=args.mqtt_host,
         mqtt_port=args.mqtt_port,
         mqtt_username=args.mqtt_username,
         mqtt_password=mqtt_password,
         retry_count=args.retry_count,
+        device_passwords=device_passwords,
     )

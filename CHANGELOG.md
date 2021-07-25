@@ -5,10 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- optional command-line parameter `--device-password-file`
+  providing path to JSON file mapping mac addresses to the password
+  that is required to control the respective switchbot device.
 
 ## [0.7.0] - 2021-07-09
 ### Added
-- Command-line parameter `--retries` to alter maximum number of attempts to send a command
+- command-line parameter `--retries` to alter maximum number of attempts to send a command
   to a SwitchBot device (default unchanged)
 
 ### Fixed

@@ -46,6 +46,22 @@ Send `OPEN`, `CLOSE`, or `STOP` to topic `homeassistant/cover/switchbot-curtain/
 $ mosquitto_pub -h MQTT_BROKER -t homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/set -m CLOSE
 ```
 
+### Device Passwords
+
+In case some of your Switchbot devices are password-protected,
+create a JSON file mapping MAC addresses to passwords
+and provide its path via the `--device-password-file` option:
+```json
+{
+  "11:22:33:44:55:66": "password",
+  "aa:bb:cc:dd:ee:ff": "secret",
+  "00:00:00:0f:f1:ce": "random string"
+}
+```
+```sh
+$ switchbot-mqtt --device-password-file /some/where/switchbot-passwords.json …
+```
+
 ## Home Assistant 🏡
 
 ### Rationale
