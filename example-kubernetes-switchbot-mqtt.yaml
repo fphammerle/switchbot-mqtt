@@ -1,0 +1,70 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: switchbot-ble-mqtt
+---
+apiVersion: v1
+data:
+  host: MTkyLjE2OC4xLjE=
+  port: MTg4Mw==
+  user: dXNlcg==
+  pass: cGFzcw==
+kind: Secret
+metadata:
+  name: mqtt-data
+  namespace: switchbot-ble-mqtt
+type: Opaque
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: switchbot-ble-mqtt
+  namespace: switchbot-ble-mqtt
+  labels:
+    app: switchbot-ble-mqtt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: switchbot-ble-mqtt
+  template:
+    metadata:
+      labels:
+        app: switchbot-ble-mqtt
+    spec:
+      hostNetwork: true
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      nodeSelector:
+        bluetooth: enabled
+      containers:
+      - name: switchbot-ble-mqtt
+        image: fphammerle/switchbot-mqtt:1.0.0-armv7
+        args: ["sh", "-c", "switchbot-mqtt --retries \"$RETRIES\" --mqtt-host \"$MQTT_HOST\" --mqtt-port \"$MQTT_PORT\" --mqtt-username \"$MQTT_USERNAME\" --mqtt-password \"$MQTT_PASSWORD\""]
+        securityContext:
+          privileged: true
+        env:
+        - name: RETRIES
+          value: "10"
+        - name: MQTT_HOST
+          valueFrom:
+            secretKeyRef:
+              name: mqtt-data
+              key: host
+        - name: MQTT_PORT
+          valueFrom:
+            secretKeyRef:
+              name: mqtt-data
+              key: port
+        - name: MQTT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mqtt-data
+              key: user
+        - name: MQTT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mqtt-data
+              key: pass

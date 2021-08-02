@@ -151,6 +151,12 @@ services:
     restart: unless-stopped
 ```
 
+## Kubernetes
+
+Using the container image, switchbot-mqtt can be executed in kubernetes. See
+the [example-kubernetes-switchbot-mqtt.yaml](./example-kubernetes-switchbot-mqtt.yaml)
+file for an example deployment of switchbot-mqtt on an armv7 kubernetes cluster.
+
 ## Alternatives
 
 * https://github.com/binsentsu/switchbot-ctrl
