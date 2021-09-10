@@ -12,5 +12,11 @@ updates:
   schedule:
     interval: weekly
     day: friday
+- package-ecosystem: github-actions
+  directory: /
+  # > YAML aliases are not supported
+  schedule:
+    interval: weekly
+    day: friday
 
 # https://docs.github.com/en/free-pro-team@latest/github/administering-a-repository/configuration-options-for-dependency-updates
