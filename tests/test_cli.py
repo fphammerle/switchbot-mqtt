@@ -100,6 +100,7 @@ def test__main(
         mqtt_password=expected_password,
         retry_count=expected_retry_count,
         device_passwords={},
+        fetch_device_info=False,
     )
 
 
@@ -144,6 +145,7 @@ def test__main_mqtt_password_file(
         mqtt_password=expected_password,
         retry_count=3,
         device_passwords={},
+        fetch_device_info=False,
     )
 
 
@@ -202,4 +204,34 @@ def test__main_device_password_file(tmpdir, device_passwords):
         mqtt_password=None,
         retry_count=3,
         device_passwords=device_passwords,
+        fetch_device_info=False,
     )
+
+
+def test__main_fetch_device_info():
+    with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
+        "sys.argv",
+        [
+            "",
+            "--mqtt-host",
+            "localhost",
+        ],
+    ):
+        # pylint: disable=protected-access
+        switchbot_mqtt._main()
+    default_kwargs = dict(
+        mqtt_host="localhost",
+        mqtt_port=1883,
+        mqtt_username=None,
+        mqtt_password=None,
+        retry_count=3,
+        device_passwords={},
+    )
+    run_mock.assert_called_once_with(fetch_device_info=False, **default_kwargs)
+    with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
+        "sys.argv",
+        ["", "--mqtt-host", "localhost", "--fetch-device-info"],
+    ):
+        # pylint: disable=protected-access
+        switchbot_mqtt._main()
+    run_mock.assert_called_once_with(fetch_device_info=True, **default_kwargs)

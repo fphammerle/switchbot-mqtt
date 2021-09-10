@@ -46,6 +46,9 @@ Send `OPEN`, `CLOSE`, or `STOP` to topic `homeassistant/cover/switchbot-curtain/
 $ mosquitto_pub -h MQTT_BROKER -t homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/set -m CLOSE
 ```
 
+The command-line option `--fetch-device-info` enables position reports on topic
+`homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position` after `STOP` commands.
+
 ### Device Passwords
 
 In case some of your Switchbot devices are password-protected,

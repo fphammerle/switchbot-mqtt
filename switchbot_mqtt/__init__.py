@@ -50,10 +50,14 @@ def _mac_address_valid(mac_address: str) -> bool:
 class _MQTTCallbackUserdata:
     # pylint: disable=too-few-public-methods; @dataclasses.dataclass when python_requires>=3.7
     def __init__(
-        self, retry_count: int, device_passwords: typing.Dict[str, str]
+        self,
+        retry_count: int,
+        device_passwords: typing.Dict[str, str],
+        fetch_device_info: bool,
     ) -> None:
         self.retry_count = retry_count
         self.device_passwords = device_passwords
+        self.fetch_device_info = fetch_device_info
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, type(self)) and vars(self) == vars(other)
@@ -72,7 +76,10 @@ class _MQTTControlledActor(abc.ABC):
 
     @abc.abstractmethod
     def execute_command(
-        self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
+        self,
+        mqtt_message_payload: bytes,
+        mqtt_client: paho.mqtt.client.Client,
+        update_device_info: bool,
     ) -> None:
         raise NotImplementedError()
 
@@ -112,7 +119,10 @@ class _MQTTControlledActor(abc.ABC):
             password=userdata.device_passwords.get(mac_address, None),
         )
         actor.execute_command(
-            mqtt_message_payload=message.payload, mqtt_client=mqtt_client
+            mqtt_message_payload=message.payload,
+            mqtt_client=mqtt_client,
+            # consider calling update+report method directly when adding support for battery levels
+            update_device_info=userdata.fetch_device_info,
         )
 
     @classmethod
@@ -189,7 +199,10 @@ class _ButtonAutomator(_MQTTControlledActor):
         )
 
     def execute_command(
-        self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
+        self,
+        mqtt_message_payload: bytes,
+        mqtt_client: paho.mqtt.client.Client,
+        update_device_info: bool,
     ) -> None:
         # https://www.home-assistant.io/integrations/switch.mqtt/#payload_on
         if mqtt_message_payload.lower() == b"on":
@@ -266,11 +279,17 @@ class _CurtainMotor(_MQTTControlledActor):
         )
 
     def _update_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
+        # Requires running bluepy-helper executable with CAP_NET_ADMIN
+        # https://github.com/IanHarvey/bluepy/issues/313#issuecomment-428324639
+        # https://github.com/fphammerle/switchbot-mqtt/pull/31#issuecomment-840704962
         self._device.update()
         self._report_position(mqtt_client=mqtt_client)
 
     def execute_command(
-        self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
+        self,
+        mqtt_message_payload: bytes,
+        mqtt_client: paho.mqtt.client.Client,
+        update_device_info: bool,
     ) -> None:
         # https://www.home-assistant.io/integrations/cover.mqtt/#payload_open
         if mqtt_message_payload.lower() == b"open":
@@ -297,7 +316,8 @@ class _CurtainMotor(_MQTTControlledActor):
                 # https://www.home-assistant.io/integrations/cover.mqtt/#configuration-variables
                 # https://community.home-assistant.io/t/mqtt-how-to-remove-retained-messages/79029/2
                 self.report_state(mqtt_client=mqtt_client, state=b"")
-                self._update_position(mqtt_client=mqtt_client)
+                if update_device_info:
+                    self._update_position(mqtt_client=mqtt_client)
         else:
             _LOGGER.warning(
                 "unexpected payload %r (expected 'OPEN', 'CLOSE', or 'STOP')",
@@ -327,11 +347,14 @@ def _run(
     mqtt_password: typing.Optional[str],
     retry_count: int,
     device_passwords: typing.Dict[str, str],
+    fetch_device_info: bool,
 ) -> None:
     # https://pypi.org/project/paho-mqtt/
     mqtt_client = paho.mqtt.client.Client(
         userdata=_MQTTCallbackUserdata(
-            retry_count=retry_count, device_passwords=device_passwords
+            retry_count=retry_count,
+            device_passwords=device_passwords,
+            fetch_device_info=fetch_device_info,
         )
     )
     mqtt_client.on_connect = _mqtt_on_connect
@@ -383,6 +406,12 @@ def _main() -> None:
         help="Maximum number of attempts to send a command to a SwitchBot device"
         " (default: %(default)d)",
     )
+    argparser.add_argument(
+        "--fetch-device-info",  # generic name to cover future addition of battery level etc.
+        action="store_true",
+        help="Report curtain motors' position on topic"
+        " homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position after sending stop command.",
+    )
     args = argparser.parse_args()
     if args.mqtt_password_path:
         # .read_text() replaces \r\n with \n
@@ -404,4 +433,5 @@ def _main() -> None:
         mqtt_password=mqtt_password,
         retry_count=args.retry_count,
         device_passwords=device_passwords,
+        fetch_device_info=args.fetch_device_info,
     )

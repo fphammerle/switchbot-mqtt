@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Report position of curtain motor on topic  `homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position`
+- command-line option `--fetch-device-info` enables reporting of curtain motors'
+  position on topic  `homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position`
   after sending stop command.
 
 ## [1.0.0] - 2021-07-25

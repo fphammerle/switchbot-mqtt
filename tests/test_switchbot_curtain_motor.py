@@ -126,6 +126,7 @@ def test__update_position():
         (b"Stop", "switchbot.SwitchbotCurtain.stop"),
     ],
 )
+@pytest.mark.parametrize("report_position_upon_stop", [True, False])
 @pytest.mark.parametrize("command_successful", [True, False])
 def test_execute_command(
     caplog,
@@ -134,6 +135,7 @@ def test_execute_command(
     retry_count,
     message_payload,
     action_name,
+    report_position_upon_stop,
     command_successful,
 ):
     with unittest.mock.patch(
@@ -150,7 +152,9 @@ def test_execute_command(
             actor, "_update_position"
         ) as update_position_mock:
             actor.execute_command(
-                mqtt_client="dummy", mqtt_message_payload=message_payload
+                mqtt_client="dummy",
+                mqtt_message_payload=message_payload,
+                update_device_info=report_position_upon_stop,
             )
     device_init_mock.assert_called_once_with(
         mac=mac_address, password=password, retry_count=retry_count, reverse_mode=True
@@ -187,7 +191,11 @@ def test_execute_command(
             )
         ]
         report_mock.assert_not_called()
-    if action_name == "switchbot.SwitchbotCurtain.stop" and command_successful:
+    if (
+        report_position_upon_stop
+        and action_name == "switchbot.SwitchbotCurtain.stop"
+        and command_successful
+    ):
         update_position_mock.assert_called_once_with(mqtt_client="dummy")
     else:
         update_position_mock.assert_not_called()
@@ -207,7 +215,9 @@ def test_execute_command_invalid_payload(
         )
         with unittest.mock.patch.object(actor, "report_state") as report_mock:
             actor.execute_command(
-                mqtt_client="dummy", mqtt_message_payload=message_payload
+                mqtt_client="dummy",
+                mqtt_message_payload=message_payload,
+                update_device_info=True,
             )
     device_mock.assert_called_once_with(
         mac=mac_address, password=password, retry_count=7, reverse_mode=True
@@ -242,7 +252,11 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
     ), caplog.at_level(logging.ERROR):
         switchbot_mqtt._CurtainMotor(
             mac_address=mac_address, retry_count=10, password="secret"
-        ).execute_command(mqtt_client="dummy", mqtt_message_payload=message_payload)
+        ).execute_command(
+            mqtt_client="dummy",
+            mqtt_message_payload=message_payload,
+            update_device_info=True,
+        )
     assert caplog.record_tuples == [
         (
             "switchbot",

@@ -64,7 +64,9 @@ def test_execute_command(
             action_name, return_value=command_successful
         ) as action_mock:
             actor.execute_command(
-                mqtt_client="dummy", mqtt_message_payload=message_payload
+                mqtt_client="dummy",
+                mqtt_message_payload=message_payload,
+                update_device_info=True,
             )
     device_init_mock.assert_called_once_with(
         mac=mac_address, password=password, retry_count=retry_count
@@ -107,7 +109,9 @@ def test_execute_command_invalid_payload(caplog, mac_address, message_payload):
         )
         with unittest.mock.patch.object(actor, "report_state") as report_mock:
             actor.execute_command(
-                mqtt_client="dummy", mqtt_message_payload=message_payload
+                mqtt_client="dummy",
+                mqtt_message_payload=message_payload,
+                update_device_info=True,
             )
     device_mock.assert_called_once_with(mac=mac_address, retry_count=21, password=None)
     assert not device_mock().mock_calls  # no methods called
@@ -138,7 +142,11 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
     ), caplog.at_level(logging.ERROR):
         switchbot_mqtt._ButtonAutomator(
             mac_address=mac_address, retry_count=3, password=None
-        ).execute_command(mqtt_client="dummy", mqtt_message_payload=message_payload)
+        ).execute_command(
+            mqtt_client="dummy",
+            mqtt_message_payload=message_payload,
+            update_device_info=True,
+        )
     assert caplog.record_tuples == [
         (
             "switchbot",

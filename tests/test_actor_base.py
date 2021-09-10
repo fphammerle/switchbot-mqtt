@@ -44,12 +44,19 @@ def test_execute_command_abstract():
             )
 
         def execute_command(
-            self, mqtt_message_payload: bytes, mqtt_client: paho.mqtt.client.Client
+            self,
+            mqtt_message_payload: bytes,
+            mqtt_client: paho.mqtt.client.Client,
+            update_device_info: bool,
         ) -> None:
             super().execute_command(
-                mqtt_message_payload=mqtt_message_payload, mqtt_client=mqtt_client
+                mqtt_message_payload=mqtt_message_payload,
+                mqtt_client=mqtt_client,
+                update_device_info=update_device_info,
             )
 
     actor = _ActorMock(mac_address=None, retry_count=42, password=None)
     with pytest.raises(NotImplementedError):
-        actor.execute_command(mqtt_message_payload=b"dummy", mqtt_client="dummy")
+        actor.execute_command(
+            mqtt_message_payload=b"dummy", mqtt_client="dummy", update_device_info=True
+        )

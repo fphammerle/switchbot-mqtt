@@ -36,7 +36,10 @@ import switchbot_mqtt
     "device_passwords",
     [{}, {"11:22:33:44:55:66": "password", "aa:bb:cc:dd:ee:ff": "secret"}],
 )
-def test__run(caplog, mqtt_host, mqtt_port, retry_count, device_passwords):
+@pytest.mark.parametrize("fetch_device_info", [True, False])
+def test__run(
+    caplog, mqtt_host, mqtt_port, retry_count, device_passwords, fetch_device_info
+):
     with unittest.mock.patch(
         "paho.mqtt.client.Client"
     ) as mqtt_client_mock, caplog.at_level(logging.DEBUG):
@@ -47,11 +50,13 @@ def test__run(caplog, mqtt_host, mqtt_port, retry_count, device_passwords):
             mqtt_password=None,
             retry_count=retry_count,
             device_passwords=device_passwords,
+            fetch_device_info=fetch_device_info,
         )
     mqtt_client_mock.assert_called_once_with(
         userdata=switchbot_mqtt._MQTTCallbackUserdata(
             retry_count=retry_count,
             device_passwords=device_passwords,
+            fetch_device_info=fetch_device_info,
         )
     )
     assert not mqtt_client_mock().username_pw_set.called
@@ -111,10 +116,11 @@ def test__run_authentication(mqtt_host, mqtt_port, mqtt_username, mqtt_password)
             mqtt_password=mqtt_password,
             retry_count=7,
             device_passwords={},
+            fetch_device_info=True,
         )
     mqtt_client_mock.assert_called_once_with(
         userdata=switchbot_mqtt._MQTTCallbackUserdata(
-            retry_count=7, device_passwords={}
+            retry_count=7, device_passwords={}, fetch_device_info=True
         )
     )
     mqtt_client_mock().username_pw_set.assert_called_once_with(
@@ -135,6 +141,7 @@ def test__run_authentication_missing_username(mqtt_host, mqtt_port, mqtt_passwor
                 mqtt_password=mqtt_password,
                 retry_count=3,
                 device_passwords={},
+                fetch_device_info=True,
             )
 
 
@@ -149,7 +156,12 @@ def _mock_actor_class(
                 mac_address=mac_address, retry_count=retry_count, password=password
             )
 
-        def execute_command(self, mqtt_message_payload: bytes, mqtt_client: Client):
+        def execute_command(
+            self,
+            mqtt_message_payload: bytes,
+            mqtt_client: Client,
+            update_device_info: bool,
+        ):
             pass
 
     return _ActorMock
@@ -203,6 +215,7 @@ def _mock_actor_class(
     ],
 )
 @pytest.mark.parametrize("retry_count", (3, 42))
+@pytest.mark.parametrize("fetch_device_info", [True, False])
 def test__mqtt_command_callback(
     caplog,
     command_topic_levels: typing.List[switchbot_mqtt._MQTTTopicLevel],
@@ -210,12 +223,15 @@ def test__mqtt_command_callback(
     payload: bytes,
     expected_mac_address: str,
     retry_count: int,
+    fetch_device_info: bool,
 ):
     ActorMock = _mock_actor_class(command_topic_levels)
     message = MQTTMessage(topic=topic)
     message.payload = payload
     callback_userdata = switchbot_mqtt._MQTTCallbackUserdata(
-        retry_count=retry_count, device_passwords={}
+        retry_count=retry_count,
+        device_passwords={},
+        fetch_device_info=fetch_device_info,
     )
     with unittest.mock.patch.object(
         ActorMock, "__init__", return_value=None
@@ -229,7 +245,9 @@ def test__mqtt_command_callback(
         mac_address=expected_mac_address, retry_count=retry_count, password=None
     )
     execute_command_mock.assert_called_once_with(
-        mqtt_client="client_dummy", mqtt_message_payload=payload
+        mqtt_client="client_dummy",
+        mqtt_message_payload=payload,
+        update_device_info=fetch_device_info,
     )
     assert caplog.record_tuples == [
         (
@@ -264,6 +282,7 @@ def test__mqtt_command_callback_password(mac_address, expected_password):
             "aa:bb:cc:dd:ee:ff": "secret",
             "11:22:33:dd:ee:ff": "äöü",
         },
+        fetch_device_info=True,
     )
     with unittest.mock.patch.object(
         ActorMock, "__init__", return_value=None
@@ -275,7 +294,9 @@ def test__mqtt_command_callback_password(mac_address, expected_password):
         mac_address=mac_address, retry_count=3, password=expected_password
     )
     execute_command_mock.assert_called_once_with(
-        mqtt_client="client_dummy", mqtt_message_payload=b"whatever"
+        mqtt_client="client_dummy",
+        mqtt_message_payload=b"whatever",
+        update_device_info=True,
     )
 
 
@@ -302,7 +323,9 @@ def test__mqtt_command_callback_unexpected_topic(caplog, topic: bytes, payload: 
     ):
         ActorMock._mqtt_command_callback(
             "client_dummy",
-            switchbot_mqtt._MQTTCallbackUserdata(retry_count=3, device_passwords={}),
+            switchbot_mqtt._MQTTCallbackUserdata(
+                retry_count=3, device_passwords={}, fetch_device_info=True
+            ),
             message,
         )
     init_mock.assert_not_called()
@@ -340,7 +363,9 @@ def test__mqtt_command_callback_invalid_mac_address(
     ):
         ActorMock._mqtt_command_callback(
             "client_dummy",
-            switchbot_mqtt._MQTTCallbackUserdata(retry_count=3, device_passwords={}),
+            switchbot_mqtt._MQTTCallbackUserdata(
+                retry_count=3, device_passwords={}, fetch_device_info=True
+            ),
             message,
         )
     init_mock.assert_not_called()
@@ -379,7 +404,9 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
     ):
         ActorMock._mqtt_command_callback(
             "client_dummy",
-            switchbot_mqtt._MQTTCallbackUserdata(retry_count=4, device_passwords={}),
+            switchbot_mqtt._MQTTCallbackUserdata(
+                retry_count=4, device_passwords={}, fetch_device_info=True
+            ),
             message,
         )
     init_mock.assert_not_called()
@@ -429,7 +456,12 @@ def test__report_state(
                 mac_address=mac_address, retry_count=retry_count, password=password
             )
 
-        def execute_command(self, mqtt_message_payload: bytes, mqtt_client: Client):
+        def execute_command(
+            self,
+            mqtt_message_payload: bytes,
+            mqtt_client: Client,
+            update_device_info: bool,
+        ):
             pass
 
     mqtt_client_mock = unittest.mock.MagicMock()
