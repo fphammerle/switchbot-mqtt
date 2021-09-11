@@ -28,6 +28,13 @@ import switchbot_mqtt
 # pylint: disable=too-many-arguments; these are tests, no API
 
 
+@pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
+def test_get_mqtt_position_topic(mac_address):
+    assert switchbot_mqtt._CurtainMotor.get_mqtt_position_topic(
+        mac_address=mac_address
+    ) == "homeassistant/cover/switchbot-curtain/{}/position".format(mac_address)
+
+
 @pytest.mark.parametrize(
     "mac_address",
     ("aa:bb:cc:dd:ee:ff", "aa:bb:cc:dd:ee:gg"),

@@ -46,6 +46,15 @@ _MQTTTopicLevel = typing.Union[str, _MQTTTopicPlaceholder]
 _MQTT_TOPIC_LEVELS_PREFIX = ["homeassistant"]  # type: typing.List[_MQTTTopicLevel]
 
 
+def _join_mqtt_topic_levels(
+    topic_levels: typing.List[_MQTTTopicLevel], mac_address: str
+) -> str:
+    return "/".join(
+        mac_address if l == _MQTTTopicPlaceholder.MAC_ADDRESS else typing.cast(str, l)
+        for l in topic_levels
+    )
+
+
 def _mac_address_valid(mac_address: str) -> bool:
     return _MAC_ADDRESS_REGEX.match(mac_address.lower()) is not None
 
@@ -161,11 +170,8 @@ class _MQTTControlledActor(abc.ABC):
         payload: bytes,
         mqtt_client: paho.mqtt.client.Client,
     ) -> None:
-        topic = "/".join(
-            self._mac_address
-            if l == _MQTTTopicPlaceholder.MAC_ADDRESS
-            else typing.cast(str, l)
-            for l in topic_levels
+        topic = _join_mqtt_topic_levels(
+            topic_levels=topic_levels, mac_address=self._mac_address
         )
         # https://pypi.org/project/paho-mqtt/#publishing
         _LOGGER.debug("publishing topic=%s payload=%r", topic, payload)
@@ -265,6 +271,12 @@ class _CurtainMotor(_MQTTControlledActor):
         _MQTTTopicPlaceholder.MAC_ADDRESS,
         "position",
     ]
+
+    @classmethod
+    def get_mqtt_position_topic(cls, mac_address: str) -> str:
+        return _join_mqtt_topic_levels(
+            topic_levels=cls._MQTT_POSITION_TOPIC_LEVELS, mac_address=mac_address
+        )
 
     def __init__(
         self, mac_address: str, retry_count: int, password: typing.Optional[str]
@@ -463,8 +475,9 @@ def _main() -> None:
     argparser.add_argument(
         "--fetch-device-info",  # generic name to cover future addition of battery level etc.
         action="store_true",
-        help="Report curtain motors' position on topic"
-        " homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position after sending stop command.",
+        help="Report curtain motors' position on topic {} after sending stop command.".format(
+            _CurtainMotor.get_mqtt_position_topic(mac_address="MAC_ADDRESS")
+        ),
     )
     args = argparser.parse_args()
     if args.mqtt_password_path:
