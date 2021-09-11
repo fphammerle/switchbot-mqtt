@@ -24,8 +24,10 @@ import json
 import logging
 import pathlib
 import re
+import shlex
 import typing
 
+import bluepy.btle
 import paho.mqtt.client
 import switchbot
 
@@ -279,10 +281,31 @@ class _CurtainMotor(_MQTTControlledActor):
         )
 
     def _update_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
-        # Requires running bluepy-helper executable with CAP_NET_ADMIN
-        # https://github.com/IanHarvey/bluepy/issues/313#issuecomment-428324639
-        # https://github.com/fphammerle/switchbot-mqtt/pull/31#issuecomment-840704962
-        self._device.update()
+        try:
+            self._device.update()
+        except bluepy.btle.BTLEManagementError as exc:
+            if (
+                exc.emsg == "Permission Denied"
+                and exc.message == "Failed to execute management command 'le on'"
+            ):
+                raise PermissionError(
+                    "bluepy-helper failed to enable low energy mode"
+                    + " due to insufficient permissions."
+                    + "\nSee {}, {}, and {}.".format(
+                        "https://github.com/IanHarvey/bluepy/issues/313#issuecomment-428324639",
+                        "https://github.com/fphammerle/switchbot-mqtt/pull/31"
+                        + "#issuecomment-846383603",
+                        "https://github.com/IanHarvey/bluepy/blob/v/1.3.0/bluepy/bluepy-helper.c"
+                        + "#L1260",
+                    )
+                    + "\nInsecure workaround:"
+                    + "\n1. sudo apt-get install --no-install-recommends libcap2-bin"
+                    + "\n2. sudo setcap cap_net_admin+ep {}".format(
+                        shlex.quote(bluepy.btle.helperExe)
+                    )
+                    + "\n3. restart switchbot-mqtt"
+                ) from exc
+            raise
         self._report_position(mqtt_client=mqtt_client)
 
     def execute_command(

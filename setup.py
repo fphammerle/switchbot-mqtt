@@ -72,6 +72,10 @@ setuptools.setup(
     ],
     entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt:_main"]},
     install_requires=[
+        # >=1.3.0 for btle.BTLEManagementError (could be replaced with BTLEException)
+        # >=0.1.0 for btle.helperExe
+        # https://github.com/IanHarvey/bluepy/tree/v/1.3.0#release-notes
+        "bluepy>=1.3.0,<2",
         # >=0.10.0 for SwitchbotCurtain.{update,get_position}
         "PySwitchbot>=0.10.0,<0.11",
         "paho-mqtt<2",
