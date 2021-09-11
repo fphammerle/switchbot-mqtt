@@ -22,27 +22,46 @@ import unittest.mock
 
 import bluepy.btle
 import pytest
-
 import switchbot_mqtt
 
 # pylint: disable=protected-access
 
+_LE_ON_PERMISSION_DENIED_ERROR = bluepy.btle.BTLEManagementError(
+    "Failed to execute management command 'le on'",
+    {
+        "rsp": ["mgmt"],
+        "code": ["mgmterr"],
+        "estat": [20],
+        "emsg": ["Permission Denied"],
+    },
+)
 
-def test__update_position_le_on_permission_denied():
+
+def test__update_position_le_on_permission_denied_log():  # pySwitchbot>=v0.10.0
+    actor = switchbot_mqtt._CurtainMotor(
+        mac_address="dummy", retry_count=21, password=None
+    )
+    with unittest.mock.patch(
+        "bluepy.btle.Scanner.scan",
+        side_effect=_LE_ON_PERMISSION_DENIED_ERROR,
+    ), unittest.mock.patch.object(
+        actor, "_report_position"
+    ) as report_position_mock, pytest.raises(
+        PermissionError
+    ) as exc_info:
+        actor._update_position(mqtt_client="client")
+    report_position_mock.assert_not_called()
+    assert "sudo setcap cap_net_admin+ep /" in exc_info.exconly()
+    assert exc_info.value.__cause__ == _LE_ON_PERMISSION_DENIED_ERROR
+
+
+def test__update_position_le_on_permission_denied_exc():  # pySwitchbot<v0.10.1
     actor = switchbot_mqtt._CurtainMotor(
         mac_address="dummy", retry_count=21, password=None
     )
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain.update",
-        side_effect=bluepy.btle.BTLEManagementError(
-            "Failed to execute management command 'le on'",
-            {
-                "rsp": ["mgmt"],
-                "code": ["mgmterr"],
-                "estat": [20],
-                "emsg": ["Permission Denied"],
-            },
-        ),
+        side_effect=_LE_ON_PERMISSION_DENIED_ERROR,
     ) as update_mock, unittest.mock.patch.object(
         actor, "_report_position"
     ) as report_position_mock, pytest.raises(
@@ -57,7 +76,7 @@ def test__update_position_le_on_permission_denied():
             exc_info.exconly(),
         ).group(1)
     )
-    assert isinstance(exc_info.value.__cause__, bluepy.btle.BTLEManagementError)
+    assert exc_info.value.__cause__ == _LE_ON_PERMISSION_DENIED_ERROR
 
 
 def test__update_position_other_error():

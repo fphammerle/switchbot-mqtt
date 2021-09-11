@@ -23,6 +23,7 @@ import enum
 import json
 import logging
 import pathlib
+import queue
 import re
 import shlex
 import typing
@@ -47,6 +48,20 @@ _MQTT_TOPIC_LEVELS_PREFIX = ["homeassistant"]  # type: typing.List[_MQTTTopicLev
 
 def _mac_address_valid(mac_address: str) -> bool:
     return _MAC_ADDRESS_REGEX.match(mac_address.lower()) is not None
+
+
+class _QueueLogHandler(logging.Handler):
+    """
+    logging.handlers.QueueHandler drops exc_info
+    """
+
+    # TypeError: 'type' object is not subscriptable
+    def __init__(self, log_queue: "queue.Queue[logging.LogRecord]") -> None:
+        self.log_queue = log_queue
+        super().__init__()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.log_queue.put(record)
 
 
 class _MQTTCallbackUserdata:
@@ -281,8 +296,21 @@ class _CurtainMotor(_MQTTControlledActor):
         )
 
     def _update_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
+        log_queue = queue.Queue(maxsize=0)  # type: queue.Queue[logging.LogRecord]
+        logging.getLogger("switchbot").addHandler(_QueueLogHandler(log_queue))
         try:
             self._device.update()
+            # pySwitchbot>=v0.10.1 catches bluepy.btle.BTLEManagementError :(
+            # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.1/switchbot/__init__.py#L141
+            while not log_queue.empty():
+                log_record = log_queue.get()
+                if log_record.exc_info:
+                    exc = log_record.exc_info[1]  # type: typing.Optional[BaseException]
+                    if (
+                        isinstance(exc, bluepy.btle.BTLEManagementError)
+                        and exc.emsg == "Permission Denied"
+                    ):
+                        raise exc
         except bluepy.btle.BTLEManagementError as exc:
             if (
                 exc.emsg == "Permission Denied"
