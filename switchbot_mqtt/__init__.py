@@ -332,6 +332,9 @@ class _CurtainMotor(_MQTTControlledActor):
                         shlex.quote(bluepy.btle.helperExe)
                     )
                     + "\n3. restart switchbot-mqtt"
+                    + "\nIn docker-based setups, you could use"
+                    + " `sudo docker run --cap-drop ALL --cap-add NET_ADMIN --user 0 …`"
+                    + " (seriously insecure)."
                 ) from exc
             raise
         self._report_position(mqtt_client=mqtt_client)
