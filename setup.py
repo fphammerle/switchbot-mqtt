@@ -81,7 +81,7 @@ setuptools.setup(
         # https://github.com/IanHarvey/bluepy/tree/v/1.3.0#release-notes
         "bluepy>=1.3.0,<2",
         # >=0.10.0 for SwitchbotCurtain.{update,get_position}
-        "PySwitchbot>=0.10.0,<0.11",
+        "PySwitchbot>=0.10.0,<0.12",
         "paho-mqtt<2",
     ],
     setup_requires=["setuptools_scm"],

@@ -42,7 +42,7 @@ def test__update_and_report_device_info(
 ):
     with unittest.mock.patch("switchbot.SwitchbotCurtain.__init__", return_value=None):
         actor = _ButtonAutomator(mac_address="dummy", retry_count=21, password=None)
-    actor._get_device()._battery_percent = battery_percent
+    actor._get_device()._switchbot_device_data = {"data": {"battery": battery_percent}}
     mqtt_client_mock = unittest.mock.MagicMock()
     with unittest.mock.patch("switchbot.Switchbot.update") as update_mock:
         actor._update_and_report_device_info(mqtt_client=mqtt_client_mock)
@@ -170,21 +170,21 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
         ),
     ), caplog.at_level(logging.ERROR):
         _ButtonAutomator(
-            mac_address=mac_address, retry_count=3, password=None
+            mac_address=mac_address, retry_count=0, password=None
         ).execute_command(
             mqtt_client="dummy",
             mqtt_message_payload=message_payload,
             update_device_info=True,
         )
-    assert caplog.record_tuples == [
-        (
-            "switchbot",
-            logging.ERROR,
-            "Switchbot communication failed. Stopping trying.",
-        ),
-        (
-            "switchbot_mqtt._actors",
-            logging.ERROR,
-            f"failed to turn {message_payload.decode().lower()} switchbot {mac_address}",
-        ),
-    ]
+    assert len(caplog.records) == 2
+    assert caplog.records[0].name == "switchbot"
+    assert caplog.records[0].levelno == logging.ERROR
+    assert caplog.records[0].msg.startswith(
+        # pySwitchbot<0.11 had '.' suffix
+        "Switchbot communication failed. Stopping trying",
+    )
+    assert caplog.record_tuples[1] == (
+        "switchbot_mqtt._actors",
+        logging.ERROR,
+        f"failed to turn {message_payload.decode().lower()} switchbot {mac_address}",
+    )

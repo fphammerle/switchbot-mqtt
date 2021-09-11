@@ -85,6 +85,7 @@ class _MQTTControlledActor(abc.ABC):
             self._get_device().update()
             # pySwitchbot>=v0.10.1 catches bluepy.btle.BTLEManagementError :(
             # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.1/switchbot/__init__.py#L141
+            # pySwitchbot<0.11.0 WARNING, >=0.11.0 ERROR
             while not log_queue.empty():
                 log_record = log_queue.get()
                 if log_record.exc_info:

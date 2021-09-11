@@ -43,11 +43,13 @@ _LE_ON_PERMISSION_DENIED_ERROR = bluepy.btle.BTLEManagementError(
 def test__update_device_info_le_on_permission_denied_log(
     actor_class,
 ):  # pySwitchbot>=v0.10.0
-    actor = actor_class(mac_address="dummy", retry_count=21, password=None)
+    actor = actor_class(mac_address="dummy", retry_count=0, password=None)
     with unittest.mock.patch(
         "bluepy.btle.Scanner.scan",
         side_effect=_LE_ON_PERMISSION_DENIED_ERROR,
-    ), pytest.raises(PermissionError) as exc_info:
+    ), pytest.raises(
+        PermissionError, match=r"^bluepy-helper failed to enable low energy mode "
+    ) as exc_info:
         actor._update_device_info()
     assert "sudo setcap cap_net_admin+ep /" in exc_info.exconly()
     assert exc_info.value.__cause__ == _LE_ON_PERMISSION_DENIED_ERROR
@@ -64,7 +66,9 @@ def test__update_device_info_le_on_permission_denied_exc(
         actor._get_device(),
         "update",
         side_effect=_LE_ON_PERMISSION_DENIED_ERROR,
-    ) as update_mock, pytest.raises(PermissionError) as exc_info:
+    ) as update_mock, pytest.raises(
+        PermissionError, match=r"^bluepy-helper failed to enable low energy mode "
+    ) as exc_info:
         actor._update_device_info()
     update_mock.assert_called_once_with()
     assert os.path.isfile(
