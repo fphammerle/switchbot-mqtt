@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.1.0] - 2021-10-06
 ### Added
 - command-line option `--fetch-device-info` enables reporting of curtain motors'
   position on topic  `homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position`
@@ -76,7 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subscribe to `homeassistant/switch/switchbot/+/set`.
   Handle `ON` and `OFF` messages.
 
-[Unreleased]: https://github.com/fphammerle/switchbot-mqtt/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/fphammerle/switchbot-mqtt/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v0.7.0...v1.0.0
 [0.7.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v0.5.0...v0.6.0
