@@ -30,9 +30,10 @@ import switchbot_mqtt
 
 @pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
 def test_get_mqtt_position_topic(mac_address):
-    assert switchbot_mqtt._CurtainMotor.get_mqtt_position_topic(
-        mac_address=mac_address
-    ) == "homeassistant/cover/switchbot-curtain/{}/position".format(mac_address)
+    assert (
+        switchbot_mqtt._CurtainMotor.get_mqtt_position_topic(mac_address=mac_address)
+        == f"homeassistant/cover/switchbot-curtain/{mac_address}/position"
+    )
 
 
 @pytest.mark.parametrize(
@@ -168,16 +169,14 @@ def test_execute_command(
     )
     action_mock.assert_called_once_with()
     if command_successful:
+        state_str = {b"open": "opening", b"close": "closing", b"stop": "stopped"}[
+            message_payload.lower()
+        ]
         assert caplog.record_tuples == [
             (
                 "switchbot_mqtt",
                 logging.INFO,
-                "switchbot curtain {} {}".format(
-                    mac_address,
-                    {b"open": "opening", b"close": "closing", b"stop": "stopped"}[
-                        message_payload.lower()
-                    ],
-                ),
+                f"switchbot curtain {mac_address} {state_str}",
             )
         ]
         report_mock.assert_called_once_with(
@@ -192,9 +191,7 @@ def test_execute_command(
             (
                 "switchbot_mqtt",
                 logging.ERROR,
-                "failed to {} switchbot curtain {}".format(
-                    message_payload.decode().lower(), mac_address
-                ),
+                f"failed to {message_payload.decode().lower()} switchbot curtain {mac_address}",
             )
         ]
         report_mock.assert_not_called()
@@ -235,9 +232,7 @@ def test_execute_command_invalid_payload(
         (
             "switchbot_mqtt",
             logging.WARNING,
-            "unexpected payload {!r} (expected 'OPEN', 'CLOSE', or 'STOP')".format(
-                message_payload
-            ),
+            f"unexpected payload {message_payload!r} (expected 'OPEN', 'CLOSE', or 'STOP')",
         )
     ]
 
@@ -254,7 +249,7 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
     with unittest.mock.patch(
         "bluepy.btle.Peripheral",
         side_effect=bluepy.btle.BTLEDisconnectError(
-            "Failed to connect to peripheral {}, addr type: random".format(mac_address)
+            f"Failed to connect to peripheral {mac_address}, addr type: random"
         ),
     ), caplog.at_level(logging.ERROR):
         switchbot_mqtt._CurtainMotor(
@@ -273,8 +268,6 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
         (
             "switchbot_mqtt",
             logging.ERROR,
-            "failed to {} switchbot curtain {}".format(
-                message_payload.decode().lower(), mac_address
-            ),
+            f"failed to {message_payload.decode().lower()} switchbot curtain {mac_address}",
         ),
     ]

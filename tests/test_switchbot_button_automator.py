@@ -77,9 +77,7 @@ def test_execute_command(
             (
                 "switchbot_mqtt",
                 logging.INFO,
-                "switchbot {} turned {}".format(
-                    mac_address, message_payload.decode().lower()
-                ),
+                f"switchbot {mac_address} turned {message_payload.decode().lower()}",
             )
         ]
         report_mock.assert_called_once_with(
@@ -90,9 +88,7 @@ def test_execute_command(
             (
                 "switchbot_mqtt",
                 logging.ERROR,
-                "failed to turn {} switchbot {}".format(
-                    message_payload.decode().lower(), mac_address
-                ),
+                f"failed to turn {message_payload.decode().lower()} switchbot {mac_address}",
             )
         ]
         report_mock.assert_not_called()
@@ -120,7 +116,7 @@ def test_execute_command_invalid_payload(caplog, mac_address, message_payload):
         (
             "switchbot_mqtt",
             logging.WARNING,
-            "unexpected payload {!r} (expected 'ON' or 'OFF')".format(message_payload),
+            f"unexpected payload {message_payload!r} (expected 'ON' or 'OFF')",
         )
     ]
 
@@ -137,7 +133,7 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
     with unittest.mock.patch(
         "bluepy.btle.Peripheral",
         side_effect=bluepy.btle.BTLEDisconnectError(
-            "Failed to connect to peripheral {}, addr type: random".format(mac_address)
+            f"Failed to connect to peripheral {mac_address}, addr type: random"
         ),
     ), caplog.at_level(logging.ERROR):
         switchbot_mqtt._ButtonAutomator(
@@ -156,8 +152,6 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
         (
             "switchbot_mqtt",
             logging.ERROR,
-            "failed to turn {} switchbot {}".format(
-                message_payload.decode().lower(), mac_address
-            ),
+            f"failed to turn {message_payload.decode().lower()} switchbot {mac_address}",
         ),
     ]

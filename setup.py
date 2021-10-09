@@ -33,7 +33,9 @@ setuptools.setup(
     description="MQTT client controlling SwitchBot button & curtain automators, "
     # https://www.home-assistant.io/integrations/switch.mqtt/
     "compatible with home-assistant.io's MQTT Switch & Cover platform",
-    long_description=pathlib.Path(__file__).parent.joinpath("README.md").read_text(),
+    long_description=pathlib.Path(__file__)
+    .parent.joinpath("README.md")
+    .read_text(encoding="utf8"),
     long_description_content_type="text/markdown",
     author="Fabian Peter Hammerle",
     author_email="fabian@hammerle.me",
@@ -63,7 +65,6 @@ setuptools.setup(
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: POSIX :: Linux",
         # .github/workflows/python.yml
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
@@ -71,6 +72,8 @@ setuptools.setup(
         "Topic :: Home Automation",
     ],
     entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt:_main"]},
+    # variable type hints, f-strings & * to force keyword-only arguments
+    python_requires=">=3.6",
     install_requires=[
         # >=1.3.0 for btle.BTLEManagementError (could be replaced with BTLEException)
         # >=0.1.0 for btle.helperExe

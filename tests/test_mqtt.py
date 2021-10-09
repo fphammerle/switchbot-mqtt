@@ -83,12 +83,12 @@ def test__run(
         (
             "switchbot_mqtt",
             logging.INFO,
-            "connecting to MQTT broker {}:{}".format(mqtt_host, mqtt_port),
+            f"connecting to MQTT broker {mqtt_host}:{mqtt_port}",
         ),
         (
             "switchbot_mqtt",
             logging.DEBUG,
-            "connected to MQTT broker {}:{}".format(mqtt_host, mqtt_port),
+            f"connected to MQTT broker {mqtt_host}:{mqtt_port}",
         ),
         (
             "switchbot_mqtt",
@@ -253,7 +253,7 @@ def test__mqtt_command_callback(
         (
             "switchbot_mqtt",
             logging.DEBUG,
-            "received topic={} payload={!r}".format(topic.decode(), payload),
+            f"received topic={topic.decode()} payload={payload!r}",
         )
     ]
 
@@ -334,12 +334,12 @@ def test__mqtt_command_callback_unexpected_topic(caplog, topic: bytes, payload: 
         (
             "switchbot_mqtt",
             logging.DEBUG,
-            "received topic={} payload={!r}".format(topic.decode(), payload),
+            f"received topic={topic.decode()} payload={payload!r}",
         ),
         (
             "switchbot_mqtt",
             logging.WARNING,
-            "unexpected topic {}".format(topic.decode()),
+            f"unexpected topic {topic.decode()}",
         ),
     ]
 
@@ -351,7 +351,7 @@ def test__mqtt_command_callback_invalid_mac_address(
     ActorMock = _mock_actor_class(
         switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
     )
-    topic = "homeassistant/switch/switchbot/{}/set".format(mac_address).encode()
+    topic = f"homeassistant/switch/switchbot/{mac_address}/set".encode()
     message = MQTTMessage(topic=topic)
     message.payload = payload
     with unittest.mock.patch.object(
@@ -374,12 +374,12 @@ def test__mqtt_command_callback_invalid_mac_address(
         (
             "switchbot_mqtt",
             logging.DEBUG,
-            "received topic={} payload={!r}".format(topic.decode(), payload),
+            f"received topic={topic.decode()} payload={payload!r}",
         ),
         (
             "switchbot_mqtt",
             logging.WARNING,
-            "invalid mac address {}".format(mac_address),
+            f"invalid mac address {mac_address}",
         ),
     ]
 
@@ -415,7 +415,7 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
         (
             "switchbot_mqtt",
             logging.DEBUG,
-            "received topic={} payload={!r}".format(topic.decode(), payload),
+            f"received topic={topic.decode()} payload={payload!r}",
         ),
         ("switchbot_mqtt", logging.INFO, "ignoring retained message"),
     ]
@@ -475,7 +475,7 @@ def test__report_state(
     assert caplog.record_tuples[0] == (
         "switchbot_mqtt",
         logging.DEBUG,
-        "publishing topic={} payload={!r}".format(expected_topic, state),
+        f"publishing topic={expected_topic} payload={state!r}",
     )
     if return_code == MQTT_ERR_SUCCESS:
         assert not caplog.records[1:]
@@ -484,8 +484,6 @@ def test__report_state(
             (
                 "switchbot_mqtt",
                 logging.ERROR,
-                "Failed to publish MQTT message on topic {} (rc={})".format(
-                    expected_topic, return_code
-                ),
+                f"Failed to publish MQTT message on topic {expected_topic} (rc={return_code})",
             )
         ]

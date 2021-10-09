@@ -14,11 +14,10 @@ on:
 
 jobs:
   code-format:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version:
-        - 3.8
+        python-verison: ['3.9']
     steps:
     - uses: actions/checkout@v2.3.4
     - uses: actions/setup-python@v2.2.2
@@ -31,15 +30,14 @@ jobs:
     - run: pipenv graph
     - run: pipenv run black --check .
   tests:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python-version:
-        - 3.5
-        - 3.6
-        - 3.7
-        - 3.8
-        - 3.9
+        - '3.6'
+        - '3.7'
+        - '3.8'
+        - '3.9'
       fail-fast: false
     steps:
     - uses: actions/checkout@v2.3.4
@@ -47,14 +45,13 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - run: pip install --upgrade pipenv==2020.8.13
-    - run: pipenv install --python "$PYTHON_VERSION" --deploy --dev
+    # by default pipenv picks the latest version in PATH
+    - run: pipenv --python "$PYTHON_VERSION" install --deploy --dev
       env:
         PYTHON_VERSION: ${{ matrix.python-version }}
     - run: pipenv graph
     - run: pipenv run pytest --cov="$(cat *.egg-info/top_level.txt)" --cov-report=term-missing --cov-fail-under=100
-    # https://github.com/PyCQA/pylint/issues/3882
-    - run: python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))'
-        || pipenv run pylint --load-plugins=pylint_import_requirements "$(cat *.egg-info/top_level.txt)"
+    - run: pipenv run pylint --load-plugins=pylint_import_requirements "$(cat *.egg-info/top_level.txt)"
     # https://github.com/PyCQA/pylint/issues/352
     - run: pipenv run pylint --disable=duplicate-code tests/*
     - run: pipenv run mypy "$(cat *.egg-info/top_level.txt)" tests

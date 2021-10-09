@@ -43,7 +43,7 @@ class _MQTTTopicPlaceholder(enum.Enum):
 
 _MQTTTopicLevel = typing.Union[str, _MQTTTopicPlaceholder]
 # "homeassistant" for historic reason, may be parametrized in future
-_MQTT_TOPIC_LEVELS_PREFIX = ["homeassistant"]  # type: typing.List[_MQTTTopicLevel]
+_MQTT_TOPIC_LEVELS_PREFIX: typing.List[_MQTTTopicLevel] = ["homeassistant"]
 
 
 def _join_mqtt_topic_levels(
@@ -77,6 +77,7 @@ class _MQTTCallbackUserdata:
     # pylint: disable=too-few-public-methods; @dataclasses.dataclass when python_requires>=3.7
     def __init__(
         self,
+        *,
         retry_count: int,
         device_passwords: typing.Dict[str, str],
         fetch_device_info: bool,
@@ -90,12 +91,12 @@ class _MQTTCallbackUserdata:
 
 
 class _MQTTControlledActor(abc.ABC):
-    MQTT_COMMAND_TOPIC_LEVELS = NotImplemented  # type: typing.List[_MQTTTopicLevel]
-    MQTT_STATE_TOPIC_LEVELS = NotImplemented  # type: typing.List[_MQTTTopicLevel]
+    MQTT_COMMAND_TOPIC_LEVELS: typing.List[_MQTTTopicLevel] = NotImplemented
+    MQTT_STATE_TOPIC_LEVELS: typing.List[_MQTTTopicLevel] = NotImplemented
 
     @abc.abstractmethod
     def __init__(
-        self, mac_address: str, retry_count: int, password: typing.Optional[str]
+        self, *, mac_address: str, retry_count: int, password: typing.Optional[str]
     ) -> None:
         # alternative: pySwitchbot >=0.10.0 provides SwitchbotDevice.get_mac()
         self._mac_address = mac_address
@@ -166,6 +167,7 @@ class _MQTTControlledActor(abc.ABC):
 
     def _mqtt_publish(
         self,
+        *,
         topic_levels: typing.List[_MQTTTopicLevel],
         payload: bytes,
         mqtt_client: paho.mqtt.client.Client,
@@ -175,9 +177,9 @@ class _MQTTControlledActor(abc.ABC):
         )
         # https://pypi.org/project/paho-mqtt/#publishing
         _LOGGER.debug("publishing topic=%s payload=%r", topic, payload)
-        message_info = mqtt_client.publish(
+        message_info: paho.mqtt.client.MQTTMessageInfo = mqtt_client.publish(
             topic=topic, payload=payload, retain=True
-        )  # type: paho.mqtt.client.MQTTMessageInfo
+        )
         # wait before checking status?
         if message_info.rc != paho.mqtt.client.MQTT_ERR_SUCCESS:
             _LOGGER.error(
@@ -212,7 +214,7 @@ class _ButtonAutomator(_MQTTControlledActor):
     ]
 
     def __init__(
-        self, mac_address: str, retry_count: int, password: typing.Optional[str]
+        self, *, mac_address: str, retry_count: int, password: typing.Optional[str]
     ) -> None:
         self._device = switchbot.Switchbot(
             mac=mac_address, password=password, retry_count=retry_count
@@ -279,7 +281,7 @@ class _CurtainMotor(_MQTTControlledActor):
         )
 
     def __init__(
-        self, mac_address: str, retry_count: int, password: typing.Optional[str]
+        self, *, mac_address: str, retry_count: int, password: typing.Optional[str]
     ) -> None:
         # > The position of the curtain is saved in self._pos with 0 = open and 100 = closed.
         # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L150
@@ -308,7 +310,7 @@ class _CurtainMotor(_MQTTControlledActor):
         )
 
     def _update_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
-        log_queue = queue.Queue(maxsize=0)  # type: queue.Queue[logging.LogRecord]
+        log_queue: queue.Queue[logging.LogRecord] = queue.Queue(maxsize=0)
         logging.getLogger("switchbot").addHandler(_QueueLogHandler(log_queue))
         try:
             self._device.update()
@@ -317,7 +319,7 @@ class _CurtainMotor(_MQTTControlledActor):
             while not log_queue.empty():
                 log_record = log_queue.get()
                 if log_record.exc_info:
-                    exc = log_record.exc_info[1]  # type: typing.Optional[BaseException]
+                    exc: typing.Optional[BaseException] = log_record.exc_info[1]
                     if (
                         isinstance(exc, bluepy.btle.BTLEManagementError)
                         and exc.emsg == "Permission Denied"
@@ -330,23 +332,18 @@ class _CurtainMotor(_MQTTControlledActor):
             ):
                 raise PermissionError(
                     "bluepy-helper failed to enable low energy mode"
-                    + " due to insufficient permissions."
-                    + "\nSee {}, {}, and {}.".format(
-                        "https://github.com/IanHarvey/bluepy/issues/313#issuecomment-428324639",
-                        "https://github.com/fphammerle/switchbot-mqtt/pull/31"
-                        + "#issuecomment-846383603",
-                        "https://github.com/IanHarvey/bluepy/blob/v/1.3.0/bluepy/bluepy-helper.c"
-                        + "#L1260",
-                    )
-                    + "\nInsecure workaround:"
-                    + "\n1. sudo apt-get install --no-install-recommends libcap2-bin"
-                    + "\n2. sudo setcap cap_net_admin+ep {}".format(
-                        shlex.quote(bluepy.btle.helperExe)
-                    )
-                    + "\n3. restart switchbot-mqtt"
-                    + "\nIn docker-based setups, you could use"
-                    + " `sudo docker run --cap-drop ALL --cap-add NET_ADMIN --user 0 …`"
-                    + " (seriously insecure)."
+                    " due to insufficient permissions."
+                    "\nSee https://github.com/IanHarvey/bluepy/issues/313#issuecomment-428324639"
+                    ", https://github.com/fphammerle/switchbot-mqtt/pull/31#issuecomment-846383603"
+                    ", and https://github.com/IanHarvey/bluepy/blob/v/1.3.0/bluepy"
+                    "/bluepy-helper.c#L1260."
+                    "\nInsecure workaround:"
+                    "\n1. sudo apt-get install --no-install-recommends libcap2-bin"
+                    f"\n2. sudo setcap cap_net_admin+ep {shlex.quote(bluepy.btle.helperExe)}"
+                    "\n3. restart switchbot-mqtt"
+                    "\nIn docker-based setups, you could use"
+                    " `sudo docker run --cap-drop ALL --cap-add NET_ADMIN --user 0 …`"
+                    " (seriously insecure)."
                 ) from exc
             raise
         self._report_position(mqtt_client=mqtt_client)
@@ -407,6 +404,7 @@ def _mqtt_on_connect(
 
 
 def _run(
+    *,
     mqtt_host: str,
     mqtt_port: int,
     mqtt_username: typing.Optional[str],
@@ -475,9 +473,9 @@ def _main() -> None:
     argparser.add_argument(
         "--fetch-device-info",  # generic name to cover future addition of battery level etc.
         action="store_true",
-        help="Report curtain motors' position on topic {} after sending stop command.".format(
-            _CurtainMotor.get_mqtt_position_topic(mac_address="MAC_ADDRESS")
-        ),
+        help="Report curtain motors' position on"
+        f" topic {_CurtainMotor.get_mqtt_position_topic(mac_address='MAC_ADDRESS')}"
+        " after sending stop command.",
     )
     args = argparser.parse_args()
     if args.mqtt_password_path:
