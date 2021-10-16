@@ -304,20 +304,31 @@ class _CurtainMotor(_MQTTControlledActor):
         _MQTTTopicPlaceholder.MAC_ADDRESS,
         "set",
     ]
-
     MQTT_STATE_TOPIC_LEVELS = _MQTT_TOPIC_LEVELS_PREFIX + [
         "cover",
         "switchbot-curtain",
         _MQTTTopicPlaceholder.MAC_ADDRESS,
         "state",
     ]
-
+    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS = _MQTT_TOPIC_LEVELS_PREFIX + [
+        "cover",
+        "switchbot-curtain",
+        _MQTTTopicPlaceholder.MAC_ADDRESS,
+        "battery-percentage",
+    ]
     _MQTT_POSITION_TOPIC_LEVELS = _MQTT_TOPIC_LEVELS_PREFIX + [
         "cover",
         "switchbot-curtain",
         _MQTTTopicPlaceholder.MAC_ADDRESS,
         "position",
     ]
+
+    @classmethod
+    def get_mqtt_battery_percentage_topic(cls, mac_address: str) -> str:
+        return _join_mqtt_topic_levels(
+            topic_levels=cls._MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS,
+            mac_address=mac_address,
+        )
 
     @classmethod
     def get_mqtt_position_topic(cls, mac_address: str) -> str:
@@ -343,6 +354,15 @@ class _CurtainMotor(_MQTTControlledActor):
     def _get_device(self) -> switchbot.SwitchbotDevice:
         return self.__device
 
+    def _report_battery_level(self, mqtt_client: paho.mqtt.client.Client) -> None:
+        # > battery: Percentage of battery that is left.
+        # https://www.home-assistant.io/integrations/sensor/#device-class
+        self._mqtt_publish(
+            topic_levels=self._MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS,
+            payload=str(self.__device.get_battery_percent()).encode(),
+            mqtt_client=mqtt_client,
+        )
+
     def _report_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
         # > position_closed integer (Optional, default: 0)
         # > position_open integer (Optional, default: 100)
@@ -357,9 +377,13 @@ class _CurtainMotor(_MQTTControlledActor):
             mqtt_client=mqtt_client,
         )
 
-    def _update_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
+    def _update_and_report_device_info(
+        self, mqtt_client: paho.mqtt.client.Client, *, report_position: bool
+    ) -> None:
         self._update_device_info()
-        self._report_position(mqtt_client=mqtt_client)
+        self._report_battery_level(mqtt_client=mqtt_client)
+        if report_position:
+            self._report_position(mqtt_client=mqtt_client)
 
     def execute_command(
         self,
@@ -368,6 +392,7 @@ class _CurtainMotor(_MQTTControlledActor):
         update_device_info: bool,
     ) -> None:
         # https://www.home-assistant.io/integrations/cover.mqtt/#payload_open
+        report_device_info, report_position = False, False
         if mqtt_message_payload.lower() == b"open":
             if not self.__device.open():
                 _LOGGER.error("failed to open switchbot curtain %s", self._mac_address)
@@ -376,6 +401,7 @@ class _CurtainMotor(_MQTTControlledActor):
                 # > state_opening string (Optional, default: opening)
                 # https://www.home-assistant.io/integrations/cover.mqtt/#state_opening
                 self.report_state(mqtt_client=mqtt_client, state=b"opening")
+                report_device_info = update_device_info
         elif mqtt_message_payload.lower() == b"close":
             if not self.__device.close():
                 _LOGGER.error("failed to close switchbot curtain %s", self._mac_address)
@@ -383,6 +409,7 @@ class _CurtainMotor(_MQTTControlledActor):
                 _LOGGER.info("switchbot curtain %s closing", self._mac_address)
                 # https://www.home-assistant.io/integrations/cover.mqtt/#state_closing
                 self.report_state(mqtt_client=mqtt_client, state=b"closing")
+                report_device_info = update_device_info
         elif mqtt_message_payload.lower() == b"stop":
             if not self.__device.stop():
                 _LOGGER.error("failed to stop switchbot curtain %s", self._mac_address)
@@ -392,12 +419,16 @@ class _CurtainMotor(_MQTTControlledActor):
                 # https://www.home-assistant.io/integrations/cover.mqtt/#configuration-variables
                 # https://community.home-assistant.io/t/mqtt-how-to-remove-retained-messages/79029/2
                 self.report_state(mqtt_client=mqtt_client, state=b"")
-                if update_device_info:
-                    self._update_position(mqtt_client=mqtt_client)
+                report_device_info = update_device_info
+                report_position = True
         else:
             _LOGGER.warning(
                 "unexpected payload %r (expected 'OPEN', 'CLOSE', or 'STOP')",
                 mqtt_message_payload,
+            )
+        if report_device_info:
+            self._update_and_report_device_info(
+                mqtt_client=mqtt_client, report_position=report_position
             )
 
 
@@ -484,11 +515,13 @@ def _main() -> None:
         " (default: %(default)d)",
     )
     argparser.add_argument(
-        "--fetch-device-info",  # generic name to cover future addition of battery level etc.
+        "--fetch-device-info",
         action="store_true",
         help="Report curtain motors' position on"
         f" topic {_CurtainMotor.get_mqtt_position_topic(mac_address='MAC_ADDRESS')}"
-        " after sending stop command.",
+        " after sending stop command and battery level on topic"
+        f" {_CurtainMotor.get_mqtt_battery_percentage_topic(mac_address='MAC_ADDRESS')}"
+        " after every commands.",
     )
     args = argparser.parse_args()
     if args.mqtt_password_path:

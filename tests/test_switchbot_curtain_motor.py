@@ -29,6 +29,16 @@ import switchbot_mqtt
 
 
 @pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
+def test_get_mqtt_battery_percentage_topic(mac_address):
+    assert (
+        switchbot_mqtt._CurtainMotor.get_mqtt_battery_percentage_topic(
+            mac_address=mac_address
+        )
+        == f"homeassistant/cover/switchbot-curtain/{mac_address}/battery-percentage"
+    )
+
+
+@pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
 def test_get_mqtt_position_topic(mac_address):
     assert (
         switchbot_mqtt._CurtainMotor.get_mqtt_position_topic(mac_address=mac_address)
@@ -102,19 +112,65 @@ def test__report_position_invalid(caplog, position):
     publish_mock.assert_not_called()
 
 
-def test__update_position():
+@pytest.mark.parametrize(("battery_percent", "battery_percent_encoded"), [(42, b"42")])
+@pytest.mark.parametrize("report_position", [True, False])
+@pytest.mark.parametrize(("position", "position_encoded"), [(21, b"21")])
+def test__update_and_report_device_info(
+    report_position: bool,
+    battery_percent: int,
+    battery_percent_encoded: bytes,
+    position: int,
+    position_encoded: bytes,
+):
     with unittest.mock.patch("switchbot.SwitchbotCurtain.__init__", return_value=None):
         actor = switchbot_mqtt._CurtainMotor(
             mac_address="dummy", retry_count=21, password=None
         )
-    with unittest.mock.patch(
-        "switchbot.SwitchbotCurtain.update"
-    ) as update_mock, unittest.mock.patch.object(
-        actor, "_report_position"
-    ) as report_position_mock:
-        actor._update_position(mqtt_client="client")
+    actor._get_device()._battery_percent = battery_percent
+    actor._get_device()._pos = position
+    mqtt_client_mock = unittest.mock.MagicMock()
+    with unittest.mock.patch("switchbot.SwitchbotCurtain.update") as update_mock:
+        actor._update_and_report_device_info(
+            mqtt_client=mqtt_client_mock, report_position=report_position
+        )
     update_mock.assert_called_once_with()
-    report_position_mock.assert_called_once_with(mqtt_client="client")
+    assert mqtt_client_mock.publish.call_count == (1 + report_position)
+    assert (
+        unittest.mock.call(
+            topic="homeassistant/cover/switchbot-curtain/dummy/battery-percentage",
+            payload=battery_percent_encoded,
+            retain=True,
+        )
+        in mqtt_client_mock.publish.call_args_list
+    )
+    if report_position:
+        assert (
+            unittest.mock.call(
+                topic="homeassistant/cover/switchbot-curtain/dummy/position",
+                payload=position_encoded,
+                retain=True,
+            )
+            in mqtt_client_mock.publish.call_args_list
+        )
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [
+        PermissionError("bluepy-helper failed to enable low energy mode..."),
+        bluepy.btle.BTLEManagementError("test"),
+    ],
+)
+def test__update_and_report_device_info_update_error(exception):
+    actor = switchbot_mqtt._CurtainMotor(
+        mac_address="dummy", retry_count=21, password=None
+    )
+    mqtt_client_mock = unittest.mock.MagicMock()
+    with unittest.mock.patch.object(
+        actor._get_device(), "update", side_effect=exception
+    ), pytest.raises(type(exception)):
+        actor._update_and_report_device_info(mqtt_client_mock, report_position=True)
+    mqtt_client_mock.publish.assert_not_called()
 
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
@@ -134,7 +190,7 @@ def test__update_position():
         (b"Stop", "switchbot.SwitchbotCurtain.stop"),
     ],
 )
-@pytest.mark.parametrize("report_position_upon_stop", [True, False])
+@pytest.mark.parametrize("update_device_info", [True, False])
 @pytest.mark.parametrize("command_successful", [True, False])
 def test_execute_command(
     caplog,
@@ -143,7 +199,7 @@ def test_execute_command(
     retry_count,
     message_payload,
     action_name,
-    report_position_upon_stop,
+    update_device_info,
     command_successful,
 ):
     with unittest.mock.patch(
@@ -157,12 +213,12 @@ def test_execute_command(
         ) as report_mock, unittest.mock.patch(
             action_name, return_value=command_successful
         ) as action_mock, unittest.mock.patch.object(
-            actor, "_update_position"
-        ) as update_position_mock:
+            actor, "_update_and_report_device_info"
+        ) as update_device_info_mock:
             actor.execute_command(
                 mqtt_client="dummy",
                 mqtt_message_payload=message_payload,
-                update_device_info=report_position_upon_stop,
+                update_device_info=update_device_info,
             )
     device_init_mock.assert_called_once_with(
         mac=mac_address, password=password, retry_count=retry_count, reverse_mode=True
@@ -195,14 +251,13 @@ def test_execute_command(
             )
         ]
         report_mock.assert_not_called()
-    if (
-        report_position_upon_stop
-        and action_name == "switchbot.SwitchbotCurtain.stop"
-        and command_successful
-    ):
-        update_position_mock.assert_called_once_with(mqtt_client="dummy")
+    if update_device_info and command_successful:
+        update_device_info_mock.assert_called_once_with(
+            mqtt_client="dummy",
+            report_position=(action_name == "switchbot.SwitchbotCurtain.stop"),
+        )
     else:
-        update_position_mock.assert_not_called()
+        update_device_info_mock.assert_not_called()
 
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
@@ -271,25 +326,3 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
             f"failed to {message_payload.decode().lower()} switchbot curtain {mac_address}",
         ),
     ]
-
-
-@pytest.mark.parametrize(
-    "exception",
-    [
-        PermissionError("bluepy-helper failed to enable low energy mode..."),
-        bluepy.btle.BTLEManagementError("test"),
-    ],
-)
-def test__update_position_update_error(exception):
-    actor = switchbot_mqtt._CurtainMotor(
-        mac_address="dummy", retry_count=21, password=None
-    )
-    with unittest.mock.patch.object(
-        actor._get_device(), "update", side_effect=exception
-    ), unittest.mock.patch.object(
-        actor, "_report_position"
-    ) as report_position_mock, pytest.raises(
-        type(exception)
-    ):
-        actor._update_position(mqtt_client="client")
-    report_position_mock.assert_not_called()

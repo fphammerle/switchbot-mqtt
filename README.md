@@ -47,7 +47,9 @@ $ mosquitto_pub -h MQTT_BROKER -t homeassistant/cover/switchbot-curtain/aa:bb:cc
 ```
 
 The command-line option `--fetch-device-info` enables position reports on topic
-`homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position` after `STOP` commands.
+`homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position` after `STOP` commands
+and battery level reports on topic `homeassistant/cover/switchbot-curtain/MAC_ADDRESS/battery-percentage`
+after every command.
 
 ### Device Passwords
 
