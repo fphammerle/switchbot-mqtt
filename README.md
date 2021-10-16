@@ -38,6 +38,9 @@ Send `ON` or `OFF` to topic `homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/se
 $ mosquitto_pub -h MQTT_BROKER -t homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set -m ON
 ```
 
+The command-line option `--fetch-device-info` enables battery level reports on topic
+`homeassistant/cover/switchbot-curtain/MAC_ADDRESS/battery-percentage` after every command.
+
 ### Curtain Motor
 
 Send `OPEN`, `CLOSE`, or `STOP` to topic `homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/set`.

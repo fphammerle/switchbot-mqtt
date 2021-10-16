@@ -6,9 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- command-line option `--fetch-device-info` enables reporting of curtain motors'
-  battery level on topic `homeassistant/cover/switchbot-curtain/MAC_ADDRESS/battery-percentage`
-  after executing commands (open, close, stop).
+- command-line option `--fetch-device-info` enables battery level reports on topics
+  `homeassistant/cover/{switchbot,switchbot-curtain}/MAC_ADDRESS/battery-percentage`
+  after every command.
 
 ### Removed
 - compatibility with `python3.5`

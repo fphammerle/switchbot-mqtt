@@ -93,6 +93,14 @@ class _MQTTCallbackUserdata:
 class _MQTTControlledActor(abc.ABC):
     MQTT_COMMAND_TOPIC_LEVELS: typing.List[_MQTTTopicLevel] = NotImplemented
     MQTT_STATE_TOPIC_LEVELS: typing.List[_MQTTTopicLevel] = NotImplemented
+    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS: typing.List[_MQTTTopicLevel] = NotImplemented
+
+    @classmethod
+    def get_mqtt_battery_percentage_topic(cls, mac_address: str) -> str:
+        return _join_mqtt_topic_levels(
+            topic_levels=cls._MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS,
+            mac_address=mac_address,
+        )
 
     @abc.abstractmethod
     def __init__(
@@ -100,15 +108,6 @@ class _MQTTControlledActor(abc.ABC):
     ) -> None:
         # alternative: pySwitchbot >=0.10.0 provides SwitchbotDevice.get_mac()
         self._mac_address = mac_address
-
-    @abc.abstractmethod
-    def execute_command(
-        self,
-        mqtt_message_payload: bytes,
-        mqtt_client: paho.mqtt.client.Client,
-        update_device_info: bool,
-    ) -> None:
-        raise NotImplementedError()
 
     @abc.abstractmethod
     def _get_device(self) -> switchbot.SwitchbotDevice:
@@ -151,6 +150,30 @@ class _MQTTControlledActor(abc.ABC):
                     " (seriously insecure)."
                 ) from exc
             raise
+
+    def _report_battery_level(self, mqtt_client: paho.mqtt.client.Client) -> None:
+        # > battery: Percentage of battery that is left.
+        # https://www.home-assistant.io/integrations/sensor/#device-class
+        self._mqtt_publish(
+            topic_levels=self._MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS,
+            payload=str(self._get_device().get_battery_percent()).encode(),
+            mqtt_client=mqtt_client,
+        )
+
+    def _update_and_report_device_info(
+        self, mqtt_client: paho.mqtt.client.Client
+    ) -> None:
+        self._update_device_info()
+        self._report_battery_level(mqtt_client=mqtt_client)
+
+    @abc.abstractmethod
+    def execute_command(
+        self,
+        mqtt_message_payload: bytes,
+        mqtt_client: paho.mqtt.client.Client,
+        update_device_info: bool,
+    ) -> None:
+        raise NotImplementedError()
 
     @classmethod
     def _mqtt_command_callback(
@@ -247,12 +270,17 @@ class _ButtonAutomator(_MQTTControlledActor):
         _MQTTTopicPlaceholder.MAC_ADDRESS,
         "set",
     ]
-
     MQTT_STATE_TOPIC_LEVELS = _MQTT_TOPIC_LEVELS_PREFIX + [
         "switch",
         "switchbot",
         _MQTTTopicPlaceholder.MAC_ADDRESS,
         "state",
+    ]
+    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS = _MQTT_TOPIC_LEVELS_PREFIX + [
+        "cover",
+        "switchbot",
+        _MQTTTopicPlaceholder.MAC_ADDRESS,
+        "battery-percentage",
     ]
 
     def __init__(
@@ -282,6 +310,8 @@ class _ButtonAutomator(_MQTTControlledActor):
                 _LOGGER.info("switchbot %s turned on", self._mac_address)
                 # https://www.home-assistant.io/integrations/switch.mqtt/#state_on
                 self.report_state(mqtt_client=mqtt_client, state=b"ON")
+                if update_device_info:
+                    self._update_and_report_device_info(mqtt_client)
         # https://www.home-assistant.io/integrations/switch.mqtt/#payload_off
         elif mqtt_message_payload.lower() == b"off":
             if not self.__device.turn_off():
@@ -289,6 +319,8 @@ class _ButtonAutomator(_MQTTControlledActor):
             else:
                 _LOGGER.info("switchbot %s turned off", self._mac_address)
                 self.report_state(mqtt_client=mqtt_client, state=b"OFF")
+                if update_device_info:
+                    self._update_and_report_device_info(mqtt_client)
         else:
             _LOGGER.warning(
                 "unexpected payload %r (expected 'ON' or 'OFF')", mqtt_message_payload
@@ -324,13 +356,6 @@ class _CurtainMotor(_MQTTControlledActor):
     ]
 
     @classmethod
-    def get_mqtt_battery_percentage_topic(cls, mac_address: str) -> str:
-        return _join_mqtt_topic_levels(
-            topic_levels=cls._MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS,
-            mac_address=mac_address,
-        )
-
-    @classmethod
     def get_mqtt_position_topic(cls, mac_address: str) -> str:
         return _join_mqtt_topic_levels(
             topic_levels=cls._MQTT_POSITION_TOPIC_LEVELS, mac_address=mac_address
@@ -354,15 +379,6 @@ class _CurtainMotor(_MQTTControlledActor):
     def _get_device(self) -> switchbot.SwitchbotDevice:
         return self.__device
 
-    def _report_battery_level(self, mqtt_client: paho.mqtt.client.Client) -> None:
-        # > battery: Percentage of battery that is left.
-        # https://www.home-assistant.io/integrations/sensor/#device-class
-        self._mqtt_publish(
-            topic_levels=self._MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS,
-            payload=str(self.__device.get_battery_percent()).encode(),
-            mqtt_client=mqtt_client,
-        )
-
     def _report_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
         # > position_closed integer (Optional, default: 0)
         # > position_open integer (Optional, default: 100)
@@ -377,11 +393,10 @@ class _CurtainMotor(_MQTTControlledActor):
             mqtt_client=mqtt_client,
         )
 
-    def _update_and_report_device_info(
-        self, mqtt_client: paho.mqtt.client.Client, *, report_position: bool
+    def _update_and_report_device_info(  # pylint: disable=arguments-differ; report_position is optional
+        self, mqtt_client: paho.mqtt.client.Client, *, report_position: bool = True
     ) -> None:
-        self._update_device_info()
-        self._report_battery_level(mqtt_client=mqtt_client)
+        super()._update_and_report_device_info(mqtt_client)
         if report_position:
             self._report_position(mqtt_client=mqtt_client)
 
@@ -517,11 +532,13 @@ def _main() -> None:
     argparser.add_argument(
         "--fetch-device-info",
         action="store_true",
-        help="Report curtain motors' position on"
-        f" topic {_CurtainMotor.get_mqtt_position_topic(mac_address='MAC_ADDRESS')}"
-        " after sending stop command and battery level on topic"
+        help="Report devices' battery level on topic"
+        f" {_ButtonAutomator.get_mqtt_battery_percentage_topic(mac_address='MAC_ADDRESS')}"
+        " or, respectively,"
         f" {_CurtainMotor.get_mqtt_battery_percentage_topic(mac_address='MAC_ADDRESS')}"
-        " after every commands.",
+        " after every command. Additionally report curtain motors' position on"
+        f" topic {_CurtainMotor.get_mqtt_position_topic(mac_address='MAC_ADDRESS')}"
+        " after executing stop commands.",
     )
     args = argparser.parse_args()
     if args.mqtt_password_path:

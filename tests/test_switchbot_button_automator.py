@@ -28,6 +28,36 @@ import switchbot_mqtt
 # pylint: disable=too-many-arguments; these are tests, no API
 
 
+@pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
+def test_get_mqtt_battery_percentage_topic(mac_address):
+    assert (
+        switchbot_mqtt._CurtainMotor.get_mqtt_battery_percentage_topic(
+            mac_address=mac_address
+        )
+        == f"homeassistant/cover/switchbot-curtain/{mac_address}/battery-percentage"
+    )
+
+
+@pytest.mark.parametrize(("battery_percent", "battery_percent_encoded"), [(42, b"42")])
+def test__update_and_report_device_info(
+    battery_percent: int, battery_percent_encoded: bytes
+):
+    with unittest.mock.patch("switchbot.SwitchbotCurtain.__init__", return_value=None):
+        actor = switchbot_mqtt._ButtonAutomator(
+            mac_address="dummy", retry_count=21, password=None
+        )
+    actor._get_device()._battery_percent = battery_percent
+    mqtt_client_mock = unittest.mock.MagicMock()
+    with unittest.mock.patch("switchbot.Switchbot.update") as update_mock:
+        actor._update_and_report_device_info(mqtt_client=mqtt_client_mock)
+    update_mock.assert_called_once_with()
+    mqtt_client_mock.publish.assert_called_once_with(
+        topic="homeassistant/cover/switchbot/dummy/battery-percentage",
+        payload=battery_percent_encoded,
+        retain=True,
+    )
+
+
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
 @pytest.mark.parametrize("password", (None, "secret"))
 @pytest.mark.parametrize("retry_count", (3, 21))
@@ -42,6 +72,7 @@ import switchbot_mqtt
         (b"Off", "switchbot.Switchbot.turn_off"),
     ],
 )
+@pytest.mark.parametrize("update_device_info", [True, False])
 @pytest.mark.parametrize("command_successful", [True, False])
 def test_execute_command(
     caplog,
@@ -50,6 +81,7 @@ def test_execute_command(
     retry_count,
     message_payload,
     action_name,
+    update_device_info,
     command_successful,
 ):
     with unittest.mock.patch(
@@ -62,11 +94,13 @@ def test_execute_command(
             actor, "report_state"
         ) as report_mock, unittest.mock.patch(
             action_name, return_value=command_successful
-        ) as action_mock:
+        ) as action_mock, unittest.mock.patch.object(
+            actor, "_update_and_report_device_info"
+        ) as update_device_info_mock:
             actor.execute_command(
                 mqtt_client="dummy",
                 mqtt_message_payload=message_payload,
-                update_device_info=True,
+                update_device_info=update_device_info,
             )
     device_init_mock.assert_called_once_with(
         mac=mac_address, password=password, retry_count=retry_count
@@ -83,6 +117,7 @@ def test_execute_command(
         report_mock.assert_called_once_with(
             mqtt_client="dummy", state=message_payload.upper()
         )
+        assert update_device_info_mock.call_count == (1 if update_device_info else 0)
     else:
         assert caplog.record_tuples == [
             (
@@ -92,6 +127,7 @@ def test_execute_command(
             )
         ]
         report_mock.assert_not_called()
+        update_device_info_mock.assert_not_called()
 
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
