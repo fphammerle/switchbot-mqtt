@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - command-line option `--fetch-device-info` enables battery level reports on topics
   `homeassistant/cover/{switchbot,switchbot-curtain}/MAC_ADDRESS/battery-percentage`
   after every command.
+- option `--debug` to change log level to `DEBUG`
+
+### Changed
+- changed default log level from `DEBUG` to `INFO`
+- shortened log format (revert with `--debug`)
 
 ### Removed
 - compatibility with `python3.5`

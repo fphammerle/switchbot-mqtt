@@ -492,11 +492,6 @@ def _run(
 
 
 def _main() -> None:
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s:%(levelname)s:%(name)s:%(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S%z",
-    )
     argparser = argparse.ArgumentParser(
         description="MQTT client controlling SwitchBot button automators, "
         "compatible with home-assistant.io's MQTT Switch platform"
@@ -540,7 +535,17 @@ def _main() -> None:
         f" topic {_CurtainMotor.get_mqtt_position_topic(mac_address='MAC_ADDRESS')}"
         " after executing stop commands.",
     )
+    argparser.add_argument("--debug", action="store_true")
     args = argparser.parse_args()
+    # https://github.com/fphammerle/python-cc1101/blob/26d8122661fc4587ecc7c73df55b92d05cf98fe8/cc1101/_cli.py#L51
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format="%(asctime)s:%(levelname)s:%(name)s:%(funcName)s:%(message)s"
+        if args.debug
+        else "%(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S%z",
+    )
+    _LOGGER.debug("args=%r", args)
     if args.mqtt_password_path:
         # .read_text() replaces \r\n with \n
         mqtt_password = args.mqtt_password_path.read_bytes().decode()

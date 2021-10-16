@@ -17,6 +17,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import json
+import logging
+import typing
 import unittest.mock
 
 import pytest
@@ -235,3 +237,31 @@ def test__main_fetch_device_info():
         # pylint: disable=protected-access
         switchbot_mqtt._main()
     run_mock.assert_called_once_with(fetch_device_info=True, **default_kwargs)
+
+
+@pytest.mark.parametrize(
+    ("additional_argv", "root_log_level", "log_format"),
+    [
+        ([], logging.INFO, "%(message)s"),
+        (
+            ["--debug"],
+            logging.DEBUG,
+            "%(asctime)s:%(levelname)s:%(name)s:%(funcName)s:%(message)s",
+        ),
+    ],
+)
+def test__main_log_config(
+    additional_argv: typing.List[str], root_log_level: int, log_format: str
+):
+    with unittest.mock.patch(
+        "sys.argv", ["", "--mqtt-host", "localhost"] + additional_argv
+    ), unittest.mock.patch(
+        "logging.basicConfig"
+    ) as logging_basic_config_mock, unittest.mock.patch(
+        "switchbot_mqtt._run"
+    ):
+        # pylint: disable=protected-access
+        switchbot_mqtt._main()
+    logging_basic_config_mock.assert_called_once_with(
+        level=root_log_level, format=log_format, datefmt="%Y-%m-%dT%H:%M:%S%z"
+    )
