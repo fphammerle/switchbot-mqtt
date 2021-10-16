@@ -110,6 +110,48 @@ class _MQTTControlledActor(abc.ABC):
     ) -> None:
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def _get_device(self) -> switchbot.SwitchbotDevice:
+        raise NotImplementedError()
+
+    def _update_device_info(self) -> None:
+        log_queue: queue.Queue[logging.LogRecord] = queue.Queue(maxsize=0)
+        logging.getLogger("switchbot").addHandler(_QueueLogHandler(log_queue))
+        try:
+            self._get_device().update()
+            # pySwitchbot>=v0.10.1 catches bluepy.btle.BTLEManagementError :(
+            # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.1/switchbot/__init__.py#L141
+            while not log_queue.empty():
+                log_record = log_queue.get()
+                if log_record.exc_info:
+                    exc: typing.Optional[BaseException] = log_record.exc_info[1]
+                    if (
+                        isinstance(exc, bluepy.btle.BTLEManagementError)
+                        and exc.emsg == "Permission Denied"
+                    ):
+                        raise exc
+        except bluepy.btle.BTLEManagementError as exc:
+            if (
+                exc.emsg == "Permission Denied"
+                and exc.message == "Failed to execute management command 'le on'"
+            ):
+                raise PermissionError(
+                    "bluepy-helper failed to enable low energy mode"
+                    " due to insufficient permissions."
+                    "\nSee https://github.com/IanHarvey/bluepy/issues/313#issuecomment-428324639"
+                    ", https://github.com/fphammerle/switchbot-mqtt/pull/31#issuecomment-846383603"
+                    ", and https://github.com/IanHarvey/bluepy/blob/v/1.3.0/bluepy"
+                    "/bluepy-helper.c#L1260."
+                    "\nInsecure workaround:"
+                    "\n1. sudo apt-get install --no-install-recommends libcap2-bin"
+                    f"\n2. sudo setcap cap_net_admin+ep {shlex.quote(bluepy.btle.helperExe)}"
+                    "\n3. restart switchbot-mqtt"
+                    "\nIn docker-based setups, you could use"
+                    " `sudo docker run --cap-drop ALL --cap-add NET_ADMIN --user 0 …`"
+                    " (seriously insecure)."
+                ) from exc
+            raise
+
     @classmethod
     def _mqtt_command_callback(
         cls,
@@ -216,12 +258,15 @@ class _ButtonAutomator(_MQTTControlledActor):
     def __init__(
         self, *, mac_address: str, retry_count: int, password: typing.Optional[str]
     ) -> None:
-        self._device = switchbot.Switchbot(
+        self.__device = switchbot.Switchbot(
             mac=mac_address, password=password, retry_count=retry_count
         )
         super().__init__(
             mac_address=mac_address, retry_count=retry_count, password=password
         )
+
+    def _get_device(self) -> switchbot.SwitchbotDevice:
+        return self.__device
 
     def execute_command(
         self,
@@ -231,7 +276,7 @@ class _ButtonAutomator(_MQTTControlledActor):
     ) -> None:
         # https://www.home-assistant.io/integrations/switch.mqtt/#payload_on
         if mqtt_message_payload.lower() == b"on":
-            if not self._device.turn_on():
+            if not self.__device.turn_on():
                 _LOGGER.error("failed to turn on switchbot %s", self._mac_address)
             else:
                 _LOGGER.info("switchbot %s turned on", self._mac_address)
@@ -239,7 +284,7 @@ class _ButtonAutomator(_MQTTControlledActor):
                 self.report_state(mqtt_client=mqtt_client, state=b"ON")
         # https://www.home-assistant.io/integrations/switch.mqtt/#payload_off
         elif mqtt_message_payload.lower() == b"off":
-            if not self._device.turn_off():
+            if not self.__device.turn_off():
                 _LOGGER.error("failed to turn off switchbot %s", self._mac_address)
             else:
                 _LOGGER.info("switchbot %s turned off", self._mac_address)
@@ -285,7 +330,7 @@ class _CurtainMotor(_MQTTControlledActor):
     ) -> None:
         # > The position of the curtain is saved in self._pos with 0 = open and 100 = closed.
         # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L150
-        self._device = switchbot.SwitchbotCurtain(
+        self.__device = switchbot.SwitchbotCurtain(
             mac=mac_address,
             password=password,
             retry_count=retry_count,
@@ -294,6 +339,9 @@ class _CurtainMotor(_MQTTControlledActor):
         super().__init__(
             mac_address=mac_address, retry_count=retry_count, password=password
         )
+
+    def _get_device(self) -> switchbot.SwitchbotDevice:
+        return self.__device
 
     def _report_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
         # > position_closed integer (Optional, default: 0)
@@ -305,47 +353,12 @@ class _CurtainMotor(_MQTTControlledActor):
         # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L202
         self._mqtt_publish(
             topic_levels=self._MQTT_POSITION_TOPIC_LEVELS,
-            payload=str(int(self._device.get_position())).encode(),
+            payload=str(int(self.__device.get_position())).encode(),
             mqtt_client=mqtt_client,
         )
 
     def _update_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
-        log_queue: queue.Queue[logging.LogRecord] = queue.Queue(maxsize=0)
-        logging.getLogger("switchbot").addHandler(_QueueLogHandler(log_queue))
-        try:
-            self._device.update()
-            # pySwitchbot>=v0.10.1 catches bluepy.btle.BTLEManagementError :(
-            # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.1/switchbot/__init__.py#L141
-            while not log_queue.empty():
-                log_record = log_queue.get()
-                if log_record.exc_info:
-                    exc: typing.Optional[BaseException] = log_record.exc_info[1]
-                    if (
-                        isinstance(exc, bluepy.btle.BTLEManagementError)
-                        and exc.emsg == "Permission Denied"
-                    ):
-                        raise exc
-        except bluepy.btle.BTLEManagementError as exc:
-            if (
-                exc.emsg == "Permission Denied"
-                and exc.message == "Failed to execute management command 'le on'"
-            ):
-                raise PermissionError(
-                    "bluepy-helper failed to enable low energy mode"
-                    " due to insufficient permissions."
-                    "\nSee https://github.com/IanHarvey/bluepy/issues/313#issuecomment-428324639"
-                    ", https://github.com/fphammerle/switchbot-mqtt/pull/31#issuecomment-846383603"
-                    ", and https://github.com/IanHarvey/bluepy/blob/v/1.3.0/bluepy"
-                    "/bluepy-helper.c#L1260."
-                    "\nInsecure workaround:"
-                    "\n1. sudo apt-get install --no-install-recommends libcap2-bin"
-                    f"\n2. sudo setcap cap_net_admin+ep {shlex.quote(bluepy.btle.helperExe)}"
-                    "\n3. restart switchbot-mqtt"
-                    "\nIn docker-based setups, you could use"
-                    " `sudo docker run --cap-drop ALL --cap-add NET_ADMIN --user 0 …`"
-                    " (seriously insecure)."
-                ) from exc
-            raise
+        self._update_device_info()
         self._report_position(mqtt_client=mqtt_client)
 
     def execute_command(
@@ -356,7 +369,7 @@ class _CurtainMotor(_MQTTControlledActor):
     ) -> None:
         # https://www.home-assistant.io/integrations/cover.mqtt/#payload_open
         if mqtt_message_payload.lower() == b"open":
-            if not self._device.open():
+            if not self.__device.open():
                 _LOGGER.error("failed to open switchbot curtain %s", self._mac_address)
             else:
                 _LOGGER.info("switchbot curtain %s opening", self._mac_address)
@@ -364,14 +377,14 @@ class _CurtainMotor(_MQTTControlledActor):
                 # https://www.home-assistant.io/integrations/cover.mqtt/#state_opening
                 self.report_state(mqtt_client=mqtt_client, state=b"opening")
         elif mqtt_message_payload.lower() == b"close":
-            if not self._device.close():
+            if not self.__device.close():
                 _LOGGER.error("failed to close switchbot curtain %s", self._mac_address)
             else:
                 _LOGGER.info("switchbot curtain %s closing", self._mac_address)
                 # https://www.home-assistant.io/integrations/cover.mqtt/#state_closing
                 self.report_state(mqtt_client=mqtt_client, state=b"closing")
         elif mqtt_message_payload.lower() == b"stop":
-            if not self._device.stop():
+            if not self.__device.stop():
                 _LOGGER.error("failed to stop switchbot curtain %s", self._mac_address)
             else:
                 _LOGGER.info("switchbot curtain %s stopped", self._mac_address)

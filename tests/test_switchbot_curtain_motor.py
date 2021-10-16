@@ -271,3 +271,25 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
             f"failed to {message_payload.decode().lower()} switchbot curtain {mac_address}",
         ),
     ]
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [
+        PermissionError("bluepy-helper failed to enable low energy mode..."),
+        bluepy.btle.BTLEManagementError("test"),
+    ],
+)
+def test__update_position_update_error(exception):
+    actor = switchbot_mqtt._CurtainMotor(
+        mac_address="dummy", retry_count=21, password=None
+    )
+    with unittest.mock.patch.object(
+        actor._get_device(), "update", side_effect=exception
+    ), unittest.mock.patch.object(
+        actor, "_report_position"
+    ) as report_position_mock, pytest.raises(
+        type(exception)
+    ):
+        actor._update_position(mqtt_client="client")
+    report_position_mock.assert_not_called()

@@ -55,8 +55,13 @@ def test_execute_command_abstract():
                 update_device_info=update_device_info,
             )
 
+        def _get_device(self):
+            return super()._get_device() or 42
+
     actor = _ActorMock(mac_address=None, retry_count=42, password=None)
     with pytest.raises(NotImplementedError):
         actor.execute_command(
             mqtt_message_payload=b"dummy", mqtt_client="dummy", update_device_info=True
         )
+    with pytest.raises(NotImplementedError):
+        actor._get_device()

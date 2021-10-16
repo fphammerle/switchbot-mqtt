@@ -37,39 +37,36 @@ _LE_ON_PERMISSION_DENIED_ERROR = bluepy.btle.BTLEManagementError(
 )
 
 
-def test__update_position_le_on_permission_denied_log():  # pySwitchbot>=v0.10.0
-    actor = switchbot_mqtt._CurtainMotor(
-        mac_address="dummy", retry_count=21, password=None
-    )
+@pytest.mark.parametrize(
+    "actor_class", [switchbot_mqtt._CurtainMotor, switchbot_mqtt._ButtonAutomator]
+)
+def test__update_device_info_le_on_permission_denied_log(
+    actor_class,
+):  # pySwitchbot>=v0.10.0
+    actor = actor_class(mac_address="dummy", retry_count=21, password=None)
     with unittest.mock.patch(
         "bluepy.btle.Scanner.scan",
         side_effect=_LE_ON_PERMISSION_DENIED_ERROR,
-    ), unittest.mock.patch.object(
-        actor, "_report_position"
-    ) as report_position_mock, pytest.raises(
-        PermissionError
-    ) as exc_info:
-        actor._update_position(mqtt_client="client")
-    report_position_mock.assert_not_called()
+    ), pytest.raises(PermissionError) as exc_info:
+        actor._update_device_info()
     assert "sudo setcap cap_net_admin+ep /" in exc_info.exconly()
     assert exc_info.value.__cause__ == _LE_ON_PERMISSION_DENIED_ERROR
 
 
-def test__update_position_le_on_permission_denied_exc():  # pySwitchbot<v0.10.1
-    actor = switchbot_mqtt._CurtainMotor(
-        mac_address="dummy", retry_count=21, password=None
-    )
-    with unittest.mock.patch(
-        "switchbot.SwitchbotCurtain.update",
+@pytest.mark.parametrize(
+    "actor_class", [switchbot_mqtt._CurtainMotor, switchbot_mqtt._ButtonAutomator]
+)
+def test__update_device_info_le_on_permission_denied_exc(
+    actor_class,
+):  # pySwitchbot<v0.10.1
+    actor = actor_class(mac_address="dummy", retry_count=21, password=None)
+    with unittest.mock.patch.object(
+        actor._get_device(),
+        "update",
         side_effect=_LE_ON_PERMISSION_DENIED_ERROR,
-    ) as update_mock, unittest.mock.patch.object(
-        actor, "_report_position"
-    ) as report_position_mock, pytest.raises(
-        PermissionError
-    ) as exc_info:
-        actor._update_position(mqtt_client="client")
+    ) as update_mock, pytest.raises(PermissionError) as exc_info:
+        actor._update_device_info()
     update_mock.assert_called_once_with()
-    report_position_mock.assert_not_called()
     assert os.path.isfile(
         re.search(
             r"sudo setcap cap_net_admin\+ep (\S+/bluepy-helper)\b",
@@ -79,19 +76,15 @@ def test__update_position_le_on_permission_denied_exc():  # pySwitchbot<v0.10.1
     assert exc_info.value.__cause__ == _LE_ON_PERMISSION_DENIED_ERROR
 
 
-def test__update_position_other_error():
-    actor = switchbot_mqtt._CurtainMotor(
-        mac_address="dummy", retry_count=21, password=None
-    )
+@pytest.mark.parametrize(
+    "actor_class", [switchbot_mqtt._CurtainMotor, switchbot_mqtt._ButtonAutomator]
+)
+def test__update_device_info_other_error(actor_class):
+    actor = actor_class(mac_address="dummy", retry_count=21, password=None)
     side_effect = bluepy.btle.BTLEManagementError("test")
-    with unittest.mock.patch(
-        "switchbot.SwitchbotCurtain.update", side_effect=side_effect
-    ) as update_mock, unittest.mock.patch.object(
-        actor, "_report_position"
-    ) as report_position_mock, pytest.raises(
-        type(side_effect)
-    ) as exc_info:
-        actor._update_position(mqtt_client="client")
+    with unittest.mock.patch.object(
+        actor._get_device(), "update", side_effect=side_effect
+    ) as update_mock, pytest.raises(type(side_effect)) as exc_info:
+        actor._update_device_info()
     update_mock.assert_called_once_with()
-    report_position_mock.assert_not_called()
     assert exc_info.value == side_effect

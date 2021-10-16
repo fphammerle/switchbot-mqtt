@@ -164,6 +164,9 @@ def _mock_actor_class(
         ):
             pass
 
+        def _get_device(self):
+            return None
+
     return _ActorMock
 
 
@@ -463,6 +466,9 @@ def test__report_state(
             update_device_info: bool,
         ):
             pass
+
+        def _get_device(self):
+            return None
 
     mqtt_client_mock = unittest.mock.MagicMock()
     mqtt_client_mock.publish.return_value.rc = return_code
