@@ -277,6 +277,13 @@ class _ButtonAutomator(_MQTTControlledActor):
         "state",
     ]
     _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS = _MQTT_TOPIC_LEVELS_PREFIX + [
+        "switch",
+        "switchbot",
+        _MQTTTopicPlaceholder.MAC_ADDRESS,
+        "battery-percentage",
+    ]
+    # for downward compatibility (will be removed in v3):
+    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS_LEGACY = _MQTT_TOPIC_LEVELS_PREFIX + [
         "cover",
         "switchbot",
         _MQTTTopicPlaceholder.MAC_ADDRESS,
@@ -295,6 +302,15 @@ class _ButtonAutomator(_MQTTControlledActor):
 
     def _get_device(self) -> switchbot.SwitchbotDevice:
         return self.__device
+
+    def _report_battery_level(self, mqtt_client: paho.mqtt.client.Client) -> None:
+        super()._report_battery_level(mqtt_client=mqtt_client)
+        # kept for downward compatibility (will be removed in v3)
+        self._mqtt_publish(
+            topic_levels=self._MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS_LEGACY,
+            payload=str(self._get_device().get_battery_percent()).encode(),
+            mqtt_client=mqtt_client,
+        )
 
     def execute_command(
         self,

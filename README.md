@@ -39,7 +39,7 @@ $ mosquitto_pub -h MQTT_BROKER -t homeassistant/switch/switchbot/aa:bb:cc:dd:ee:
 ```
 
 The command-line option `--fetch-device-info` enables battery level reports on topic
-`homeassistant/cover/switchbot-curtain/MAC_ADDRESS/battery-percentage` after every command.
+`homeassistant/switch/switchbot/MAC_ADDRESS/battery-percentage` after every command.
 
 ### Curtain Motor
 

@@ -31,10 +31,10 @@ import switchbot_mqtt
 @pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
 def test_get_mqtt_battery_percentage_topic(mac_address):
     assert (
-        switchbot_mqtt._CurtainMotor.get_mqtt_battery_percentage_topic(
+        switchbot_mqtt._ButtonAutomator.get_mqtt_battery_percentage_topic(
             mac_address=mac_address
         )
-        == f"homeassistant/cover/switchbot-curtain/{mac_address}/battery-percentage"
+        == f"homeassistant/switch/switchbot/{mac_address}/battery-percentage"
     )
 
 
@@ -51,11 +51,14 @@ def test__update_and_report_device_info(
     with unittest.mock.patch("switchbot.Switchbot.update") as update_mock:
         actor._update_and_report_device_info(mqtt_client=mqtt_client_mock)
     update_mock.assert_called_once_with()
-    mqtt_client_mock.publish.assert_called_once_with(
-        topic="homeassistant/cover/switchbot/dummy/battery-percentage",
-        payload=battery_percent_encoded,
-        retain=True,
-    )
+    assert mqtt_client_mock.publish.call_args_list == [
+        unittest.mock.call(topic=t, payload=battery_percent_encoded, retain=True)
+        for t in [
+            "homeassistant/switch/switchbot/dummy/battery-percentage",
+            # will be removed in v3:
+            "homeassistant/cover/switchbot/dummy/battery-percentage",
+        ]
+    ]
 
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
