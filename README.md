@@ -156,6 +156,7 @@ services:
     - MQTT_PORT=1883
     #- MQTT_USERNAME=username
     #- MQTT_PASSWORD=password
+    #- FETCH_DEVICE_INFO=yes
     restart: unless-stopped
 ```
 

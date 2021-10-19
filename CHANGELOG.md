@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `--fetch-device-info` can alternatively be enabled by assigning a non-empty value
+  to the environment variable `FETCH_DEVICE_INFO`
 - battery level of button automators will additionally be reported on topic
   `homeassistant/switch/switchbot/MAC_ADDRESS/battery-percentage`
   (old topic kept for downward compatibility)

@@ -22,6 +22,7 @@ import collections
 import enum
 import json
 import logging
+import os
 import pathlib
 import queue
 import re
@@ -549,7 +550,9 @@ def _main() -> None:
         f" {_CurtainMotor.get_mqtt_battery_percentage_topic(mac_address='MAC_ADDRESS')}"
         " after every command. Additionally report curtain motors' position on"
         f" topic {_CurtainMotor.get_mqtt_position_topic(mac_address='MAC_ADDRESS')}"
-        " after executing stop commands.",
+        " after executing stop commands."
+        " This option can also be enabled by assigning a non-empty value to the"
+        " environment variable FETCH_DEVICE_INFO.",
     )
     argparser.add_argument("--debug", action="store_true")
     args = argparser.parse_args()
@@ -582,5 +585,8 @@ def _main() -> None:
         mqtt_password=mqtt_password,
         retry_count=args.retry_count,
         device_passwords=device_passwords,
-        fetch_device_info=args.fetch_device_info,
+        fetch_device_info=args.fetch_device_info
+        # > In formal language theory, the empty string, [...], is the unique string of length zero.
+        # https://en.wikipedia.org/wiki/Empty_string
+        or bool(os.environ.get("FETCH_DEVICE_INFO")),
     )
