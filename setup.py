@@ -72,7 +72,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.10",
         "Topic :: Home Automation",
     ],
-    entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt:_main"]},
+    entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt._cli:_main"]},
     # variable type hints, f-strings & * to force keyword-only arguments
     python_requires=">=3.6",
     install_requires=[

@@ -18,6 +18,7 @@
 
 import json
 import logging
+import subprocess
 import typing
 import unittest.mock
 
@@ -28,6 +29,12 @@ import switchbot_mqtt._cli
 
 # pylint: disable=protected-access; tests
 # pylint: disable=too-many-arguments; these are tests, no API
+
+
+def test_console_entry_point():
+    assert subprocess.run(
+        ["switchbot-mqtt", "--help"], stdout=subprocess.PIPE, check=True
+    ).stdout.startswith(b"usage: ")
 
 
 @pytest.mark.parametrize(
