@@ -24,6 +24,8 @@ import pytest
 from paho.mqtt.client import MQTT_ERR_QUEUE_SIZE, MQTT_ERR_SUCCESS, MQTTMessage, Client
 
 import switchbot_mqtt
+import switchbot_mqtt._actors
+from switchbot_mqtt._utils import _MQTTTopicLevel, _MQTTTopicPlaceholder
 
 # pylint: disable=protected-access
 # pylint: disable=too-many-arguments; these are tests, no API
@@ -91,12 +93,12 @@ def test__run(
             f"connected to MQTT broker {mqtt_host}:{mqtt_port}",
         ),
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.INFO,
             "subscribing to MQTT topic 'homeassistant/switch/switchbot/+/set'",
         ),
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.INFO,
             "subscribing to MQTT topic 'homeassistant/cover/switchbot-curtain/+/set'",
         ),
@@ -146,9 +148,9 @@ def test__run_authentication_missing_username(mqtt_host, mqtt_port, mqtt_passwor
 
 
 def _mock_actor_class(
-    command_topic_levels: typing.List[switchbot_mqtt._MQTTTopicLevel],
+    command_topic_levels: typing.List[_MQTTTopicLevel],
 ) -> typing.Type:
-    class _ActorMock(switchbot_mqtt._MQTTControlledActor):
+    class _ActorMock(switchbot_mqtt._actors._MQTTControlledActor):
         MQTT_COMMAND_TOPIC_LEVELS = command_topic_levels
 
         def __init__(self, mac_address, retry_count, password):
@@ -204,7 +206,7 @@ def _mock_actor_class(
             "aa:01:23:45:67:89",
         ),
         (
-            ["switchbot", switchbot_mqtt._MQTTTopicPlaceholder.MAC_ADDRESS],
+            ["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS],
             b"switchbot/aa:01:23:45:67:89",
             b"ON",
             "aa:01:23:45:67:89",
@@ -221,7 +223,7 @@ def _mock_actor_class(
 @pytest.mark.parametrize("fetch_device_info", [True, False])
 def test__mqtt_command_callback(
     caplog,
-    command_topic_levels: typing.List[switchbot_mqtt._MQTTTopicLevel],
+    command_topic_levels: typing.List[_MQTTTopicLevel],
     topic: bytes,
     payload: bytes,
     expected_mac_address: str,
@@ -254,7 +256,7 @@ def test__mqtt_command_callback(
     )
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.DEBUG,
             f"received topic={topic.decode()} payload={payload!r}",
         )
@@ -270,12 +272,7 @@ def test__mqtt_command_callback(
     ],
 )
 def test__mqtt_command_callback_password(mac_address, expected_password):
-    ActorMock = _mock_actor_class(
-        [
-            "switchbot",
-            switchbot_mqtt._MQTTTopicPlaceholder.MAC_ADDRESS,
-        ]
-    )
+    ActorMock = _mock_actor_class(["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS])
     message = MQTTMessage(topic=b"switchbot/" + mac_address.encode())
     message.payload = b"whatever"
     callback_userdata = switchbot_mqtt._MQTTCallbackUserdata(
@@ -335,12 +332,12 @@ def test__mqtt_command_callback_unexpected_topic(caplog, topic: bytes, payload: 
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.DEBUG,
             f"received topic={topic.decode()} payload={payload!r}",
         ),
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.WARNING,
             f"unexpected topic {topic.decode()}",
         ),
@@ -375,12 +372,12 @@ def test__mqtt_command_callback_invalid_mac_address(
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.DEBUG,
             f"received topic={topic.decode()} payload={payload!r}",
         ),
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.WARNING,
             f"invalid mac address {mac_address}",
         ),
@@ -416,11 +413,11 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.DEBUG,
             f"received topic={topic.decode()} payload={payload!r}",
         ),
-        ("switchbot_mqtt", logging.INFO, "ignoring retained message"),
+        ("switchbot_mqtt._actors", logging.INFO, "ignoring retained message"),
     ]
 
 
@@ -434,7 +431,7 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
             "homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/state",
         ),
         (
-            ["switchbot", switchbot_mqtt._MQTTTopicPlaceholder.MAC_ADDRESS, "state"],
+            ["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS, "state"],
             "aa:bb:cc:dd:ee:gg",
             "switchbot/aa:bb:cc:dd:ee:gg/state",
         ),
@@ -444,14 +441,14 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
 @pytest.mark.parametrize("return_code", [MQTT_ERR_SUCCESS, MQTT_ERR_QUEUE_SIZE])
 def test__report_state(
     caplog,
-    state_topic_levels: typing.List[switchbot_mqtt._MQTTTopicLevel],
+    state_topic_levels: typing.List[_MQTTTopicLevel],
     mac_address: str,
     expected_topic: str,
     state: bytes,
     return_code: int,
 ):
     # pylint: disable=too-many-arguments
-    class _ActorMock(switchbot_mqtt._MQTTControlledActor):
+    class _ActorMock(switchbot_mqtt._actors._MQTTControlledActor):
         MQTT_STATE_TOPIC_LEVELS = state_topic_levels
 
         def __init__(self, mac_address, retry_count, password):
@@ -479,7 +476,7 @@ def test__report_state(
         topic=expected_topic, payload=state, retain=True
     )
     assert caplog.record_tuples[0] == (
-        "switchbot_mqtt",
+        "switchbot_mqtt._actors",
         logging.DEBUG,
         f"publishing topic={expected_topic} payload={state!r}",
     )
@@ -488,7 +485,7 @@ def test__report_state(
     else:
         assert caplog.record_tuples[1:] == [
             (
-                "switchbot_mqtt",
+                "switchbot_mqtt._actors",
                 logging.ERROR,
                 f"Failed to publish MQTT message on topic {expected_topic} (rc={return_code})",
             )

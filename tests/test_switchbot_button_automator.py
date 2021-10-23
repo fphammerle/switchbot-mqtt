@@ -22,7 +22,7 @@ import unittest.mock
 import bluepy.btle
 import pytest
 
-import switchbot_mqtt
+from switchbot_mqtt import _ButtonAutomator
 
 # pylint: disable=protected-access
 # pylint: disable=too-many-arguments; these are tests, no API
@@ -31,9 +31,7 @@ import switchbot_mqtt
 @pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
 def test_get_mqtt_battery_percentage_topic(mac_address):
     assert (
-        switchbot_mqtt._ButtonAutomator.get_mqtt_battery_percentage_topic(
-            mac_address=mac_address
-        )
+        _ButtonAutomator.get_mqtt_battery_percentage_topic(mac_address=mac_address)
         == f"homeassistant/switch/switchbot/{mac_address}/battery-percentage"
     )
 
@@ -43,9 +41,7 @@ def test__update_and_report_device_info(
     battery_percent: int, battery_percent_encoded: bytes
 ):
     with unittest.mock.patch("switchbot.SwitchbotCurtain.__init__", return_value=None):
-        actor = switchbot_mqtt._ButtonAutomator(
-            mac_address="dummy", retry_count=21, password=None
-        )
+        actor = _ButtonAutomator(mac_address="dummy", retry_count=21, password=None)
     actor._get_device()._battery_percent = battery_percent
     mqtt_client_mock = unittest.mock.MagicMock()
     with unittest.mock.patch("switchbot.Switchbot.update") as update_mock:
@@ -90,7 +86,7 @@ def test_execute_command(
     with unittest.mock.patch(
         "switchbot.Switchbot.__init__", return_value=None
     ) as device_init_mock, caplog.at_level(logging.INFO):
-        actor = switchbot_mqtt._ButtonAutomator(
+        actor = _ButtonAutomator(
             mac_address=mac_address, retry_count=retry_count, password=password
         )
         with unittest.mock.patch.object(
@@ -112,7 +108,7 @@ def test_execute_command(
     if command_successful:
         assert caplog.record_tuples == [
             (
-                "switchbot_mqtt",
+                "switchbot_mqtt._actors",
                 logging.INFO,
                 f"switchbot {mac_address} turned {message_payload.decode().lower()}",
             )
@@ -124,7 +120,7 @@ def test_execute_command(
     else:
         assert caplog.record_tuples == [
             (
-                "switchbot_mqtt",
+                "switchbot_mqtt._actors",
                 logging.ERROR,
                 f"failed to turn {message_payload.decode().lower()} switchbot {mac_address}",
             )
@@ -139,9 +135,7 @@ def test_execute_command_invalid_payload(caplog, mac_address, message_payload):
     with unittest.mock.patch("switchbot.Switchbot") as device_mock, caplog.at_level(
         logging.INFO
     ):
-        actor = switchbot_mqtt._ButtonAutomator(
-            mac_address=mac_address, retry_count=21, password=None
-        )
+        actor = _ButtonAutomator(mac_address=mac_address, retry_count=21, password=None)
         with unittest.mock.patch.object(actor, "report_state") as report_mock:
             actor.execute_command(
                 mqtt_client="dummy",
@@ -153,7 +147,7 @@ def test_execute_command_invalid_payload(caplog, mac_address, message_payload):
     report_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.WARNING,
             f"unexpected payload {message_payload!r} (expected 'ON' or 'OFF')",
         )
@@ -175,7 +169,7 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
             f"Failed to connect to peripheral {mac_address}, addr type: random"
         ),
     ), caplog.at_level(logging.ERROR):
-        switchbot_mqtt._ButtonAutomator(
+        _ButtonAutomator(
             mac_address=mac_address, retry_count=3, password=None
         ).execute_command(
             mqtt_client="dummy",
@@ -189,7 +183,7 @@ def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
             "Switchbot communication failed. Stopping trying.",
         ),
         (
-            "switchbot_mqtt",
+            "switchbot_mqtt._actors",
             logging.ERROR,
             f"failed to turn {message_payload.decode().lower()} switchbot {mac_address}",
         ),
