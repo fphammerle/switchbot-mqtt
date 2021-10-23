@@ -30,6 +30,7 @@ from switchbot_mqtt._utils import (
     _mac_address_valid,
     _MQTTTopicLevel,
     _MQTTTopicPlaceholder,
+    _parse_mqtt_topic,
     _QueueLogHandler,
 )
 
@@ -151,20 +152,13 @@ class _MQTTControlledActor(abc.ABC):
         if message.retain:
             _LOGGER.info("ignoring retained message")
             return
-        topic_split = message.topic.split("/")
-        if len(topic_split) != len(cls.MQTT_COMMAND_TOPIC_LEVELS):
-            _LOGGER.warning("unexpected topic %s", message.topic)
+        try:
+            mac_address = _parse_mqtt_topic(
+                topic=message.topic, expected_levels=cls.MQTT_COMMAND_TOPIC_LEVELS
+            )[_MQTTTopicPlaceholder.MAC_ADDRESS]
+        except ValueError as exc:
+            _LOGGER.warning(str(exc), exc_info=False)
             return
-        mac_address = None
-        for given_part, expected_part in zip(
-            topic_split, cls.MQTT_COMMAND_TOPIC_LEVELS
-        ):
-            if expected_part == _MQTTTopicPlaceholder.MAC_ADDRESS:
-                mac_address = given_part
-            elif expected_part != given_part:
-                _LOGGER.warning("unexpected topic %s", message.topic)
-                return
-        assert mac_address
         if not _mac_address_valid(mac_address):
             _LOGGER.warning("invalid mac address %s", mac_address)
             return

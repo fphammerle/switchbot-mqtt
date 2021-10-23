@@ -45,6 +45,21 @@ def _join_mqtt_topic_levels(
     )
 
 
+def _parse_mqtt_topic(
+    topic: str, expected_levels: typing.List[_MQTTTopicLevel]
+) -> typing.Dict[_MQTTTopicPlaceholder, str]:
+    attrs: typing.Dict[_MQTTTopicPlaceholder, str] = {}
+    topic_split = topic.split("/")
+    if len(topic_split) != len(expected_levels):
+        raise ValueError(f"unexpected topic {topic}")
+    for given_part, expected_part in zip(topic_split, expected_levels):
+        if expected_part == _MQTTTopicPlaceholder.MAC_ADDRESS:
+            attrs[_MQTTTopicPlaceholder(expected_part)] = given_part
+        elif expected_part != given_part:
+            raise ValueError(f"unexpected topic {topic}")
+    return attrs
+
+
 class _QueueLogHandler(logging.Handler):
     """
     logging.handlers.QueueHandler drops exc_info
