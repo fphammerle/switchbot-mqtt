@@ -3,6 +3,13 @@
 disable=missing-function-docstring,
         missing-module-docstring
 
+[SIMILARITIES]
+
+# avoid marking param list of implementation as duplicate of abstract declaration
+# https://github.com/PyCQA/pylint/issues/3239
+# https://github.com/PyCQA/pylint/issues/214
+min-similarity-lines=6
+
 [DESIGN]
 
 max-args=8
