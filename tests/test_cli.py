@@ -24,6 +24,7 @@ import unittest.mock
 import pytest
 
 import switchbot_mqtt
+import switchbot_mqtt._cli
 
 # pylint: disable=protected-access; tests
 # pylint: disable=too-many-arguments; these are tests, no API
@@ -94,7 +95,7 @@ def test__main(
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv", argv
     ):
-        switchbot_mqtt._main()
+        switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(
         mqtt_host=expected_mqtt_host,
         mqtt_port=expected_mqtt_port,
@@ -138,7 +139,7 @@ def test__main_mqtt_password_file(
             str(mqtt_password_path),
         ],
     ):
-        switchbot_mqtt._main()
+        switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(
         mqtt_host="localhost",
         mqtt_port=1883,
@@ -166,7 +167,7 @@ def test__main_mqtt_password_file_collision(capsys):
         ],
     ):
         with pytest.raises(SystemExit):
-            switchbot_mqtt._main()
+            switchbot_mqtt._cli._main()
     out, err = capsys.readouterr()
     assert not out
     assert (
@@ -195,7 +196,7 @@ def test__main_device_password_file(tmpdir, device_passwords):
             str(device_passwords_path),
         ],
     ):
-        switchbot_mqtt._main()
+        switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(
         mqtt_host="localhost",
         mqtt_port=1883,
@@ -216,7 +217,7 @@ def test__main_fetch_device_info():
             "localhost",
         ],
     ):
-        switchbot_mqtt._main()
+        switchbot_mqtt._cli._main()
     default_kwargs = dict(
         mqtt_host="localhost",
         mqtt_port=1883,
@@ -230,25 +231,25 @@ def test__main_fetch_device_info():
         "sys.argv",
         ["", "--mqtt-host", "localhost", "--fetch-device-info"],
     ):
-        switchbot_mqtt._main()
+        switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(fetch_device_info=True, **default_kwargs)
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
         ["", "--mqtt-host", "localhost"],
     ), unittest.mock.patch.dict("os.environ", {"FETCH_DEVICE_INFO": "21"}):
-        switchbot_mqtt._main()
+        switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(fetch_device_info=True, **default_kwargs)
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
         ["", "--mqtt-host", "localhost"],
     ), unittest.mock.patch.dict("os.environ", {"FETCH_DEVICE_INFO": ""}):
-        switchbot_mqtt._main()
+        switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(fetch_device_info=False, **default_kwargs)
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
         ["", "--mqtt-host", "localhost"],
     ), unittest.mock.patch.dict("os.environ", {"FETCH_DEVICE_INFO": " "}):
-        switchbot_mqtt._main()
+        switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(fetch_device_info=True, **default_kwargs)
 
 
@@ -273,7 +274,7 @@ def test__main_log_config(
     ) as logging_basic_config_mock, unittest.mock.patch(
         "switchbot_mqtt._run"
     ):
-        switchbot_mqtt._main()
+        switchbot_mqtt._cli._main()
     logging_basic_config_mock.assert_called_once_with(
         level=root_log_level, format=log_format, datefmt="%Y-%m-%dT%H:%M:%S%z"
     )
