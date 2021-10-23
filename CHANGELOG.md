@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- MQTT messages on topic `homeassistant/switch/switchbot/MAC_ADDRESS/request-device-info`
+  and `homeassistant/cover/switchbot-curtain/MAC_ADDRESS/request-device-info` trigger
+  update and reporting of device information (battery level, and curtains' position).
+  Requires `--fetch-device-info`.
 
 ## [2.1.0] - 2021-10-19
 ### Added

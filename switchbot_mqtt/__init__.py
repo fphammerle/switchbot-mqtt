@@ -38,8 +38,14 @@ def _mqtt_on_connect(
     assert return_code == 0, return_code  # connection accepted
     mqtt_broker_host, mqtt_broker_port = mqtt_client.socket().getpeername()
     _LOGGER.debug("connected to MQTT broker %s:%d", mqtt_broker_host, mqtt_broker_port)
-    _ButtonAutomator.mqtt_subscribe(mqtt_client=mqtt_client)
-    _CurtainMotor.mqtt_subscribe(mqtt_client=mqtt_client)
+    _ButtonAutomator.mqtt_subscribe(
+        mqtt_client=mqtt_client,
+        enable_device_info_update_topic=userdata.fetch_device_info,
+    )
+    _CurtainMotor.mqtt_subscribe(
+        mqtt_client=mqtt_client,
+        enable_device_info_update_topic=userdata.fetch_device_info,
+    )
 
 
 def _run(

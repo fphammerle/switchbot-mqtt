@@ -74,6 +74,10 @@ def _main() -> None:
         " after every command. Additionally report curtain motors' position on"
         f" topic {_CurtainMotor.get_mqtt_position_topic(mac_address='MAC_ADDRESS')}"
         " after executing stop commands."
+        " When this option is enabled, the mentioned reports may also be requested"
+        " by sending a MQTT message to the topic"
+        f" {_ButtonAutomator.get_mqtt_update_device_info_topic(mac_address='MAC_ADDRESS')}"
+        f" or {_CurtainMotor.get_mqtt_update_device_info_topic(mac_address='MAC_ADDRESS')}."
         " This option can also be enabled by assigning a non-empty value to the"
         " environment variable FETCH_DEVICE_INFO.",
     )

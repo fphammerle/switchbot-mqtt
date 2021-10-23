@@ -56,8 +56,16 @@ class _MQTTCallbackUserdata:
 
 class _MQTTControlledActor(abc.ABC):
     MQTT_COMMAND_TOPIC_LEVELS: typing.List[_MQTTTopicLevel] = NotImplemented
+    _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS: typing.List[_MQTTTopicLevel] = NotImplemented
     MQTT_STATE_TOPIC_LEVELS: typing.List[_MQTTTopicLevel] = NotImplemented
     _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS: typing.List[_MQTTTopicLevel] = NotImplemented
+
+    @classmethod
+    def get_mqtt_update_device_info_topic(cls, mac_address: str) -> str:
+        return _join_mqtt_topic_levels(
+            topic_levels=cls._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS,
+            mac_address=mac_address,
+        )
 
     @classmethod
     def get_mqtt_battery_percentage_topic(cls, mac_address: str) -> str:
@@ -130,6 +138,51 @@ class _MQTTControlledActor(abc.ABC):
         self._update_device_info()
         self._report_battery_level(mqtt_client=mqtt_client)
 
+    @classmethod
+    def _init_from_topic(
+        cls,
+        userdata: _MQTTCallbackUserdata,
+        topic: str,
+        expected_topic_levels: typing.List[_MQTTTopicLevel],
+    ) -> typing.Optional["_MQTTControlledActor"]:
+        try:
+            mac_address = _parse_mqtt_topic(
+                topic=topic, expected_levels=expected_topic_levels
+            )[_MQTTTopicPlaceholder.MAC_ADDRESS]
+        except ValueError as exc:
+            _LOGGER.warning(str(exc), exc_info=False)
+            return None
+        if not _mac_address_valid(mac_address):
+            _LOGGER.warning("invalid mac address %s", mac_address)
+            return None
+        return cls(
+            mac_address=mac_address,
+            retry_count=userdata.retry_count,
+            password=userdata.device_passwords.get(mac_address, None),
+        )
+
+    @classmethod
+    def _mqtt_update_device_info_callback(
+        cls,
+        mqtt_client: paho.mqtt.client.Client,
+        userdata: _MQTTCallbackUserdata,
+        message: paho.mqtt.client.MQTTMessage,
+    ) -> None:
+        # pylint: disable=unused-argument; callback
+        # https://github.com/eclipse/paho.mqtt.python/blob/v1.5.0/src/paho/mqtt/client.py#L469
+        _LOGGER.debug("received topic=%s payload=%r", message.topic, message.payload)
+        if message.retain:
+            _LOGGER.info("ignoring retained message")
+            return
+        actor = cls._init_from_topic(
+            userdata=userdata,
+            topic=message.topic,
+            expected_topic_levels=cls._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS,
+        )
+        if actor:
+            # pylint: disable=protected-access; own instance
+            actor._update_and_report_device_info(mqtt_client)
+
     @abc.abstractmethod
     def execute_command(
         self,
@@ -152,40 +205,38 @@ class _MQTTControlledActor(abc.ABC):
         if message.retain:
             _LOGGER.info("ignoring retained message")
             return
-        try:
-            mac_address = _parse_mqtt_topic(
-                topic=message.topic, expected_levels=cls.MQTT_COMMAND_TOPIC_LEVELS
-            )[_MQTTTopicPlaceholder.MAC_ADDRESS]
-        except ValueError as exc:
-            _LOGGER.warning(str(exc), exc_info=False)
-            return
-        if not _mac_address_valid(mac_address):
-            _LOGGER.warning("invalid mac address %s", mac_address)
-            return
-        actor = cls(
-            mac_address=mac_address,
-            retry_count=userdata.retry_count,
-            password=userdata.device_passwords.get(mac_address, None),
+        actor = cls._init_from_topic(
+            userdata=userdata,
+            topic=message.topic,
+            expected_topic_levels=cls.MQTT_COMMAND_TOPIC_LEVELS,
         )
-        actor.execute_command(
-            mqtt_message_payload=message.payload,
-            mqtt_client=mqtt_client,
-            # consider calling update+report method directly when adding support for battery levels
-            update_device_info=userdata.fetch_device_info,
-        )
+        if actor:
+            actor.execute_command(
+                mqtt_message_payload=message.payload,
+                mqtt_client=mqtt_client,
+                update_device_info=userdata.fetch_device_info,
+            )
 
     @classmethod
-    def mqtt_subscribe(cls, mqtt_client: paho.mqtt.client.Client) -> None:
-        command_topic = "/".join(
-            "+" if isinstance(l, _MQTTTopicPlaceholder) else l
-            for l in cls.MQTT_COMMAND_TOPIC_LEVELS
-        )
-        _LOGGER.info("subscribing to MQTT topic %r", command_topic)
-        mqtt_client.subscribe(command_topic)
-        mqtt_client.message_callback_add(
-            sub=command_topic,
-            callback=cls._mqtt_command_callback,
-        )
+    def mqtt_subscribe(
+        cls,
+        mqtt_client: paho.mqtt.client.Client,
+        *,
+        enable_device_info_update_topic: bool,
+    ) -> None:
+        topics = [(cls.MQTT_COMMAND_TOPIC_LEVELS, cls._mqtt_command_callback)]
+        if enable_device_info_update_topic:
+            topics.append(
+                (
+                    cls._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS,
+                    cls._mqtt_update_device_info_callback,
+                )
+            )
+        for topic_levels, callback in topics:
+            topic = _join_mqtt_topic_levels(topic_levels, mac_address="+")
+            _LOGGER.info("subscribing to MQTT topic %r", topic)
+            mqtt_client.subscribe(topic)
+            mqtt_client.message_callback_add(sub=topic, callback=callback)
 
     def _mqtt_publish(
         self,
