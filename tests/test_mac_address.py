@@ -17,8 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pytest
-
-import switchbot_mqtt
+import switchbot_mqtt._utils
 
 
 @pytest.mark.parametrize(
@@ -33,4 +32,4 @@ import switchbot_mqtt
 )
 def test__mac_address_valid(mac_address, valid):
     # pylint: disable=protected-access
-    assert switchbot_mqtt._mac_address_valid(mac_address) == valid
+    assert switchbot_mqtt._utils._mac_address_valid(mac_address) == valid

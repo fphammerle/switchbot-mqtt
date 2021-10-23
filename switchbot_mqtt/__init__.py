@@ -17,15 +17,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import abc
-import argparse
-import collections
-import enum
-import json
 import logging
-import os
-import pathlib
 import queue
-import re
 import shlex
 import typing
 
@@ -33,45 +26,18 @@ import bluepy.btle
 import paho.mqtt.client
 import switchbot
 
+from switchbot_mqtt._utils import (
+    _join_mqtt_topic_levels,
+    _mac_address_valid,
+    _MQTTTopicLevel,
+    _MQTTTopicPlaceholder,
+    _QueueLogHandler,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
-_MAC_ADDRESS_REGEX = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
-
-
-class _MQTTTopicPlaceholder(enum.Enum):
-    MAC_ADDRESS = "MAC_ADDRESS"
-
-
-_MQTTTopicLevel = typing.Union[str, _MQTTTopicPlaceholder]
 # "homeassistant" for historic reason, may be parametrized in future
 _MQTT_TOPIC_LEVELS_PREFIX: typing.List[_MQTTTopicLevel] = ["homeassistant"]
-
-
-def _join_mqtt_topic_levels(
-    topic_levels: typing.List[_MQTTTopicLevel], mac_address: str
-) -> str:
-    return "/".join(
-        mac_address if l == _MQTTTopicPlaceholder.MAC_ADDRESS else typing.cast(str, l)
-        for l in topic_levels
-    )
-
-
-def _mac_address_valid(mac_address: str) -> bool:
-    return _MAC_ADDRESS_REGEX.match(mac_address.lower()) is not None
-
-
-class _QueueLogHandler(logging.Handler):
-    """
-    logging.handlers.QueueHandler drops exc_info
-    """
-
-    # TypeError: 'type' object is not subscriptable
-    def __init__(self, log_queue: "queue.Queue[logging.LogRecord]") -> None:
-        self.log_queue = log_queue
-        super().__init__()
-
-    def emit(self, record: logging.LogRecord) -> None:
-        self.log_queue.put(record)
 
 
 class _MQTTCallbackUserdata:
