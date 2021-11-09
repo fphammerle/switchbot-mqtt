@@ -65,7 +65,6 @@ setuptools.setup(
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: POSIX :: Linux",
         # .github/workflows/python.yml
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
@@ -73,8 +72,9 @@ setuptools.setup(
         "Topic :: Home Automation",
     ],
     entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt._cli:_main"]},
-    # variable type hints, f-strings & * to force keyword-only arguments
-    python_requires=">=3.6",
+    # >=3.6 variable type hints, f-strings & * to force keyword-only arguments
+    # >=3.7 postponed evaluation of type annotations (PEP563) & dataclass
+    python_requires=">=3.7",
     install_requires=[
         # >=1.3.0 for btle.BTLEManagementError (could be replaced with BTLEException)
         # >=0.1.0 for btle.helperExe

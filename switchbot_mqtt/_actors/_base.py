@@ -16,7 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from __future__ import annotations  # PEP563 (default in python>=3.10)
+
 import abc
+import dataclasses
 import logging
 import queue
 import shlex
@@ -37,21 +40,11 @@ from switchbot_mqtt._utils import (
 _LOGGER = logging.getLogger(__name__)
 
 
+@dataclasses.dataclass
 class _MQTTCallbackUserdata:
-    # pylint: disable=too-few-public-methods; @dataclasses.dataclass when python_requires>=3.7
-    def __init__(
-        self,
-        *,
-        retry_count: int,
-        device_passwords: typing.Dict[str, str],
-        fetch_device_info: bool,
-    ) -> None:
-        self.retry_count = retry_count
-        self.device_passwords = device_passwords
-        self.fetch_device_info = fetch_device_info
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, type(self)) and vars(self) == vars(other)
+    retry_count: int
+    device_passwords: typing.Dict[str, str]
+    fetch_device_info: bool
 
 
 class _MQTTControlledActor(abc.ABC):
@@ -144,7 +137,7 @@ class _MQTTControlledActor(abc.ABC):
         userdata: _MQTTCallbackUserdata,
         topic: str,
         expected_topic_levels: typing.List[_MQTTTopicLevel],
-    ) -> typing.Optional["_MQTTControlledActor"]:
+    ) -> typing.Optional[_MQTTControlledActor]:
         try:
             mac_address = _parse_mqtt_topic(
                 topic=topic, expected_levels=expected_topic_levels
