@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- support `PySwitchbot` `v0.11.0`
+- support `PySwitchbot` `v0.11.0` and `v0.12.0`
 
 ### Removed
 - compatibility with `python3.6`
