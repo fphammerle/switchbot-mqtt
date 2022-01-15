@@ -30,7 +30,7 @@ _LOGGER = logging.getLogger(__name__)
 def _mqtt_on_connect(
     mqtt_client: paho.mqtt.client.Client,
     userdata: _MQTTCallbackUserdata,
-    flags: typing.Dict,
+    flags: typing.Dict[str, int],
     return_code: int,
 ) -> None:
     # pylint: disable=unused-argument; callback

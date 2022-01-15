@@ -17,19 +17,21 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
+import typing
 import unittest.mock
 
+import _pytest.logging
 import bluepy.btle
 import pytest
 
-from switchbot_mqtt import _ButtonAutomator
+from switchbot_mqtt._actors import _ButtonAutomator
 
 # pylint: disable=protected-access
 # pylint: disable=too-many-arguments; these are tests, no API
 
 
 @pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
-def test_get_mqtt_battery_percentage_topic(mac_address):
+def test_get_mqtt_battery_percentage_topic(mac_address: str) -> None:
     assert (
         _ButtonAutomator.get_mqtt_battery_percentage_topic(mac_address=mac_address)
         == f"homeassistant/switch/switchbot/{mac_address}/battery-percentage"
@@ -39,7 +41,7 @@ def test_get_mqtt_battery_percentage_topic(mac_address):
 @pytest.mark.parametrize(("battery_percent", "battery_percent_encoded"), [(42, b"42")])
 def test__update_and_report_device_info(
     battery_percent: int, battery_percent_encoded: bytes
-):
+) -> None:
     with unittest.mock.patch("switchbot.SwitchbotCurtain.__init__", return_value=None):
         actor = _ButtonAutomator(mac_address="dummy", retry_count=21, password=None)
     actor._get_device()._switchbot_device_data = {"data": {"battery": battery_percent}}
@@ -74,15 +76,15 @@ def test__update_and_report_device_info(
 @pytest.mark.parametrize("update_device_info", [True, False])
 @pytest.mark.parametrize("command_successful", [True, False])
 def test_execute_command(
-    caplog,
-    mac_address,
-    password,
-    retry_count,
-    message_payload,
-    action_name,
-    update_device_info,
-    command_successful,
-):
+    caplog: _pytest.logging.LogCaptureFixture,
+    mac_address: str,
+    password: typing.Optional[str],
+    retry_count: int,
+    message_payload: bytes,
+    action_name: str,
+    update_device_info: bool,
+    command_successful: bool,
+) -> None:
     with unittest.mock.patch(
         "switchbot.Switchbot.__init__", return_value=None
     ) as device_init_mock, caplog.at_level(logging.INFO):
@@ -131,7 +133,9 @@ def test_execute_command(
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
 @pytest.mark.parametrize("message_payload", [b"EIN", b""])
-def test_execute_command_invalid_payload(caplog, mac_address, message_payload):
+def test_execute_command_invalid_payload(
+    caplog: _pytest.logging.LogCaptureFixture, mac_address: str, message_payload: bytes
+) -> None:
     with unittest.mock.patch("switchbot.Switchbot") as device_mock, caplog.at_level(
         logging.INFO
     ):
@@ -156,7 +160,9 @@ def test_execute_command_invalid_payload(caplog, mac_address, message_payload):
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
 @pytest.mark.parametrize("message_payload", [b"ON", b"OFF"])
-def test_execute_command_bluetooth_error(caplog, mac_address, message_payload):
+def test_execute_command_bluetooth_error(
+    caplog: _pytest.logging.LogCaptureFixture, mac_address: str, message_payload: bytes
+) -> None:
     """
     paho.mqtt.python>=1.5.1 no longer implicitly suppresses exceptions in callbacks.
     verify pySwitchbot catches exceptions raised in bluetooth stack.

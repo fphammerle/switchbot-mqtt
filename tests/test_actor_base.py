@@ -20,22 +20,23 @@ import typing
 
 import paho.mqtt.client
 import pytest
+import switchbot
 
-import switchbot_mqtt._actors
+import switchbot_mqtt._actors._base
 
 # pylint: disable=protected-access
 
 
-def test_abstract():
+def test_abstract() -> None:
     with pytest.raises(TypeError, match=r"\babstract class\b"):
         # pylint: disable=abstract-class-instantiated
-        switchbot_mqtt._actors._MQTTControlledActor(
-            mac_address=None, retry_count=21, password=None
+        switchbot_mqtt._actors._base._MQTTControlledActor(  # type: ignore
+            mac_address="dummy", retry_count=21, password=None
         )
 
 
-def test_execute_command_abstract():
-    class _ActorMock(switchbot_mqtt._actors._MQTTControlledActor):
+def test_execute_command_abstract() -> None:
+    class _ActorMock(switchbot_mqtt._actors._base._MQTTControlledActor):
         def __init__(
             self, mac_address: str, retry_count: int, password: typing.Optional[str]
         ) -> None:
@@ -55,10 +56,11 @@ def test_execute_command_abstract():
                 update_device_info=update_device_info,
             )
 
-        def _get_device(self):
-            return super()._get_device() or 42
+        def _get_device(self) -> switchbot.SwitchbotDevice:
+            assert 42
+            return super()._get_device()
 
-    actor = _ActorMock(mac_address=None, retry_count=42, password=None)
+    actor = _ActorMock(mac_address="aa:bb:cc:dd:ee:ff", retry_count=42, password=None)
     with pytest.raises(NotImplementedError):
         actor.execute_command(
             mqtt_message_payload=b"dummy", mqtt_client="dummy", update_device_info=True

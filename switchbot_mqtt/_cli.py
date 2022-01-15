@@ -25,7 +25,7 @@ import pathlib
 import switchbot
 
 import switchbot_mqtt
-from switchbot_mqtt import _ButtonAutomator, _CurtainMotor
+from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
 
 _LOGGER = logging.getLogger(__name__)
 

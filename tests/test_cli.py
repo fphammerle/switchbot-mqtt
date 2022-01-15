@@ -18,10 +18,12 @@
 
 import json
 import logging
+import pathlib
 import subprocess
 import typing
 import unittest.mock
 
+import _pytest.capture
 import pytest
 
 import switchbot_mqtt
@@ -31,7 +33,7 @@ import switchbot_mqtt._cli
 # pylint: disable=too-many-arguments; these are tests, no API
 
 
-def test_console_entry_point():
+def test_console_entry_point() -> None:
     assert subprocess.run(
         ["switchbot-mqtt", "--help"], stdout=subprocess.PIPE, check=True
     ).stdout.startswith(b"usage: ")
@@ -92,13 +94,13 @@ def test_console_entry_point():
     ],
 )
 def test__main(
-    argv,
-    expected_mqtt_host,
-    expected_mqtt_port,
-    expected_username,
-    expected_password,
-    expected_retry_count,
-):
+    argv: typing.List[str],
+    expected_mqtt_host: str,
+    expected_mqtt_port: int,
+    expected_username: str,
+    expected_password: str,
+    expected_retry_count: int,
+) -> None:
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv", argv
     ):
@@ -129,11 +131,10 @@ def test__main(
     ],
 )
 def test__main_mqtt_password_file(
-    tmpdir, mqtt_password_file_content, expected_password
-):
-    mqtt_password_path = tmpdir.join("mqtt-password")
-    with mqtt_password_path.open("w") as mqtt_password_file:
-        mqtt_password_file.write(mqtt_password_file_content)
+    tmp_path: pathlib.Path, mqtt_password_file_content: str, expected_password: str
+) -> None:
+    mqtt_password_path = tmp_path.joinpath("mqtt-password")
+    mqtt_password_path.write_text(mqtt_password_file_content, encoding="utf8")
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
         [
@@ -158,7 +159,9 @@ def test__main_mqtt_password_file(
     )
 
 
-def test__main_mqtt_password_file_collision(capsys):
+def test__main_mqtt_password_file_collision(
+    capsys: _pytest.capture.CaptureFixture,
+) -> None:
     with unittest.mock.patch(
         "sys.argv",
         [
@@ -190,8 +193,10 @@ def test__main_mqtt_password_file_collision(capsys):
         {"11:22:33:44:55:66": "password", "aa:bb:cc:dd:ee:ff": "secret"},
     ],
 )
-def test__main_device_password_file(tmpdir, device_passwords):
-    device_passwords_path = tmpdir.join("passwords.json")
+def test__main_device_password_file(
+    tmp_path: pathlib.Path, device_passwords: typing.Dict[str, str]
+) -> None:
+    device_passwords_path = tmp_path.joinpath("passwords.json")
     device_passwords_path.write_text(json.dumps(device_passwords), encoding="utf8")
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
@@ -215,7 +220,7 @@ def test__main_device_password_file(tmpdir, device_passwords):
     )
 
 
-def test__main_fetch_device_info():
+def test__main_fetch_device_info() -> None:
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
         [
@@ -273,7 +278,7 @@ def test__main_fetch_device_info():
 )
 def test__main_log_config(
     additional_argv: typing.List[str], root_log_level: int, log_format: str
-):
+) -> None:
     with unittest.mock.patch(
         "sys.argv", ["", "--mqtt-host", "localhost"] + additional_argv
     ), unittest.mock.patch(

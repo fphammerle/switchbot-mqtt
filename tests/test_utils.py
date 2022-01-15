@@ -16,10 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import typing
+
 import pytest
 
 from switchbot_mqtt._utils import (
     _mac_address_valid,
+    _MQTTTopicLevel,
     _MQTTTopicPlaceholder,
     _parse_mqtt_topic,
 )
@@ -35,7 +38,7 @@ from switchbot_mqtt._utils import (
         ("aa:bb:cc:dd:ee:gg", False),
     ],
 )
-def test__mac_address_valid(mac_address, valid):
+def test__mac_address_valid(mac_address: str, valid: bool) -> None:
     # pylint: disable=protected-access
     assert _mac_address_valid(mac_address) == valid
 
@@ -65,7 +68,11 @@ def test__mac_address_valid(mac_address, valid):
         ),
     ],
 )
-def test__parse_mqtt_topic(expected_levels, topic, expected_attrs):
+def test__parse_mqtt_topic(
+    expected_levels: typing.List[_MQTTTopicLevel],
+    topic: str,
+    expected_attrs: typing.Dict[_MQTTTopicPlaceholder, str],
+) -> None:
     assert (
         _parse_mqtt_topic(topic=topic, expected_levels=expected_levels)
         == expected_attrs
@@ -89,6 +96,8 @@ def test__parse_mqtt_topic(expected_levels, topic, expected_attrs):
         ),
     ],
 )
-def test__parse_mqtt_topic_fail(expected_levels, topic):
+def test__parse_mqtt_topic_fail(
+    expected_levels: typing.List[_MQTTTopicLevel], topic: str
+) -> None:
     with pytest.raises(ValueError):
         _parse_mqtt_topic(topic=topic, expected_levels=expected_levels)

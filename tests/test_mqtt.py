@@ -20,11 +20,14 @@ import logging
 import typing
 import unittest.mock
 
+import _pytest.logging
 import pytest
 from paho.mqtt.client import MQTT_ERR_QUEUE_SIZE, MQTT_ERR_SUCCESS, MQTTMessage, Client
 
 import switchbot_mqtt
 import switchbot_mqtt._actors
+from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
+from switchbot_mqtt._actors._base import _MQTTCallbackUserdata, _MQTTControlledActor
 from switchbot_mqtt._utils import _MQTTTopicLevel, _MQTTTopicPlaceholder
 
 # pylint: disable=protected-access
@@ -40,8 +43,13 @@ from switchbot_mqtt._utils import _MQTTTopicLevel, _MQTTTopicPlaceholder
 )
 @pytest.mark.parametrize("fetch_device_info", [True, False])
 def test__run(
-    caplog, mqtt_host, mqtt_port, retry_count, device_passwords, fetch_device_info
-):
+    caplog: _pytest.logging.LogCaptureFixture,
+    mqtt_host: str,
+    mqtt_port: int,
+    retry_count: int,
+    device_passwords: typing.Dict[str, str],
+    fetch_device_info: bool,
+) -> None:
     with unittest.mock.patch(
         "paho.mqtt.client.Client"
     ) as mqtt_client_mock, caplog.at_level(logging.DEBUG):
@@ -58,7 +66,7 @@ def test__run(
     assert not mqtt_client_mock.call_args[0]
     assert set(mqtt_client_mock.call_args[1].keys()) == {"userdata"}
     userdata = mqtt_client_mock.call_args[1]["userdata"]
-    assert userdata == switchbot_mqtt._MQTTCallbackUserdata(
+    assert userdata == _MQTTCallbackUserdata(
         retry_count=retry_count,
         device_passwords=device_passwords,
         fetch_device_info=fetch_device_info,
@@ -112,7 +120,12 @@ def test__run(
 @pytest.mark.parametrize("mqtt_port", [1833])
 @pytest.mark.parametrize("mqtt_username", ["me"])
 @pytest.mark.parametrize("mqtt_password", [None, "secret"])
-def test__run_authentication(mqtt_host, mqtt_port, mqtt_username, mqtt_password):
+def test__run_authentication(
+    mqtt_host: str,
+    mqtt_port: int,
+    mqtt_username: str,
+    mqtt_password: typing.Optional[str],
+) -> None:
     with unittest.mock.patch("paho.mqtt.client.Client") as mqtt_client_mock:
         switchbot_mqtt._run(
             mqtt_host=mqtt_host,
@@ -124,7 +137,7 @@ def test__run_authentication(mqtt_host, mqtt_port, mqtt_username, mqtt_password)
             fetch_device_info=True,
         )
     mqtt_client_mock.assert_called_once_with(
-        userdata=switchbot_mqtt._MQTTCallbackUserdata(
+        userdata=_MQTTCallbackUserdata(
             retry_count=7, device_passwords={}, fetch_device_info=True
         )
     )
@@ -136,7 +149,9 @@ def test__run_authentication(mqtt_host, mqtt_port, mqtt_username, mqtt_password)
 @pytest.mark.parametrize("mqtt_host", ["mqtt-broker.local"])
 @pytest.mark.parametrize("mqtt_port", [1833])
 @pytest.mark.parametrize("mqtt_password", ["secret"])
-def test__run_authentication_missing_username(mqtt_host, mqtt_port, mqtt_password):
+def test__run_authentication_missing_username(
+    mqtt_host: str, mqtt_port: int, mqtt_password: str
+) -> None:
     with unittest.mock.patch("paho.mqtt.client.Client"):
         with pytest.raises(ValueError):
             switchbot_mqtt._run(
@@ -155,11 +170,13 @@ def _mock_actor_class(
     command_topic_levels: typing.List[_MQTTTopicLevel] = NotImplemented,
     request_info_levels: typing.List[_MQTTTopicLevel] = NotImplemented,
 ) -> typing.Type:
-    class _ActorMock(switchbot_mqtt._actors._MQTTControlledActor):
+    class _ActorMock(_MQTTControlledActor):
         MQTT_COMMAND_TOPIC_LEVELS = command_topic_levels
         _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = request_info_levels
 
-        def __init__(self, mac_address, retry_count, password):
+        def __init__(
+            self, mac_address: str, retry_count: int, password: typing.Optional[str]
+        ) -> None:
             super().__init__(
                 mac_address=mac_address, retry_count=retry_count, password=password
             )
@@ -169,10 +186,10 @@ def _mock_actor_class(
             mqtt_message_payload: bytes,
             mqtt_client: Client,
             update_device_info: bool,
-        ):
+        ) -> None:
             pass
 
-        def _get_device(self):
+        def _get_device(self) -> None:
             return None
 
     return _ActorMock
@@ -190,16 +207,16 @@ def _mock_actor_class(
 )
 @pytest.mark.parametrize("payload", [b"", b"whatever"])
 def test__mqtt_update_device_info_callback(
-    caplog,
+    caplog: _pytest.logging.LogCaptureFixture,
     topic_levels: typing.List[_MQTTTopicLevel],
     topic: bytes,
     expected_mac_address: str,
     payload: bytes,
-):
+) -> None:
     ActorMock = _mock_actor_class(request_info_levels=topic_levels)
     message = MQTTMessage(topic=topic)
     message.payload = payload
-    callback_userdata = switchbot_mqtt._MQTTCallbackUserdata(
+    callback_userdata = _MQTTCallbackUserdata(
         retry_count=21,  # tested in test__mqtt_command_callback
         device_passwords={},
         fetch_device_info=True,
@@ -227,7 +244,9 @@ def test__mqtt_update_device_info_callback(
     ]
 
 
-def test__mqtt_update_device_info_callback_ignore_retained(caplog):
+def test__mqtt_update_device_info_callback_ignore_retained(
+    caplog: _pytest.logging.LogCaptureFixture,
+) -> None:
     ActorMock = _mock_actor_class(
         request_info_levels=[_MQTTTopicPlaceholder.MAC_ADDRESS, "request"]
     )
@@ -243,7 +262,7 @@ def test__mqtt_update_device_info_callback_ignore_retained(caplog):
     ):
         ActorMock._mqtt_update_device_info_callback(
             "client_dummy",
-            switchbot_mqtt._MQTTCallbackUserdata(
+            _MQTTCallbackUserdata(
                 retry_count=21, device_passwords={}, fetch_device_info=True
             ),
             message,
@@ -264,31 +283,31 @@ def test__mqtt_update_device_info_callback_ignore_retained(caplog):
     ("command_topic_levels", "topic", "payload", "expected_mac_address"),
     [
         (
-            switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
+            _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set",
             b"ON",
             "aa:bb:cc:dd:ee:ff",
         ),
         (
-            switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
+            _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set",
             b"OFF",
             "aa:bb:cc:dd:ee:ff",
         ),
         (
-            switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
+            _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set",
             b"on",
             "aa:bb:cc:dd:ee:ff",
         ),
         (
-            switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
+            _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set",
             b"off",
             "aa:bb:cc:dd:ee:ff",
         ),
         (
-            switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
+            _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/switch/switchbot/aa:01:23:45:67:89/set",
             b"ON",
             "aa:01:23:45:67:89",
@@ -300,7 +319,7 @@ def test__mqtt_update_device_info_callback_ignore_retained(caplog):
             "aa:01:23:45:67:89",
         ),
         (
-            switchbot_mqtt._CurtainMotor.MQTT_COMMAND_TOPIC_LEVELS,
+            _CurtainMotor.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/cover/switchbot-curtain/aa:01:23:45:67:89/set",
             b"OPEN",
             "aa:01:23:45:67:89",
@@ -310,18 +329,18 @@ def test__mqtt_update_device_info_callback_ignore_retained(caplog):
 @pytest.mark.parametrize("retry_count", (3, 42))
 @pytest.mark.parametrize("fetch_device_info", [True, False])
 def test__mqtt_command_callback(
-    caplog,
+    caplog: _pytest.logging.LogCaptureFixture,
     command_topic_levels: typing.List[_MQTTTopicLevel],
     topic: bytes,
     payload: bytes,
     expected_mac_address: str,
     retry_count: int,
     fetch_device_info: bool,
-):
+) -> None:
     ActorMock = _mock_actor_class(command_topic_levels=command_topic_levels)
     message = MQTTMessage(topic=topic)
     message.payload = payload
-    callback_userdata = switchbot_mqtt._MQTTCallbackUserdata(
+    callback_userdata = _MQTTCallbackUserdata(
         retry_count=retry_count,
         device_passwords={},
         fetch_device_info=fetch_device_info,
@@ -359,13 +378,15 @@ def test__mqtt_command_callback(
         ("11:22:33:dd:ee:ff", "äöü"),
     ],
 )
-def test__mqtt_command_callback_password(mac_address, expected_password):
+def test__mqtt_command_callback_password(
+    mac_address: str, expected_password: typing.Optional[str]
+) -> None:
     ActorMock = _mock_actor_class(
         command_topic_levels=["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS]
     )
     message = MQTTMessage(topic=b"switchbot/" + mac_address.encode())
     message.payload = b"whatever"
-    callback_userdata = switchbot_mqtt._MQTTCallbackUserdata(
+    callback_userdata = _MQTTCallbackUserdata(
         retry_count=3,
         device_passwords={
             "11:22:33:44:55:77": "test",
@@ -398,9 +419,11 @@ def test__mqtt_command_callback_password(mac_address, expected_password):
         (b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set/suffix", b"ON"),
     ],
 )
-def test__mqtt_command_callback_unexpected_topic(caplog, topic: bytes, payload: bytes):
+def test__mqtt_command_callback_unexpected_topic(
+    caplog: _pytest.logging.LogCaptureFixture, topic: bytes, payload: bytes
+) -> None:
     ActorMock = _mock_actor_class(
-        command_topic_levels=switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
+        command_topic_levels=_ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
     )
     message = MQTTMessage(topic=topic)
     message.payload = payload
@@ -413,7 +436,7 @@ def test__mqtt_command_callback_unexpected_topic(caplog, topic: bytes, payload: 
     ):
         ActorMock._mqtt_command_callback(
             "client_dummy",
-            switchbot_mqtt._MQTTCallbackUserdata(
+            _MQTTCallbackUserdata(
                 retry_count=3, device_passwords={}, fetch_device_info=True
             ),
             message,
@@ -436,10 +459,10 @@ def test__mqtt_command_callback_unexpected_topic(caplog, topic: bytes, payload: 
 
 @pytest.mark.parametrize(("mac_address", "payload"), [("aa:01:23:4E:RR:OR", b"ON")])
 def test__mqtt_command_callback_invalid_mac_address(
-    caplog, mac_address: str, payload: bytes
-):
+    caplog: _pytest.logging.LogCaptureFixture, mac_address: str, payload: bytes
+) -> None:
     ActorMock = _mock_actor_class(
-        command_topic_levels=switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
+        command_topic_levels=_ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
     )
     topic = f"homeassistant/switch/switchbot/{mac_address}/set".encode()
     message = MQTTMessage(topic=topic)
@@ -453,7 +476,7 @@ def test__mqtt_command_callback_invalid_mac_address(
     ):
         ActorMock._mqtt_command_callback(
             "client_dummy",
-            switchbot_mqtt._MQTTCallbackUserdata(
+            _MQTTCallbackUserdata(
                 retry_count=3, device_passwords={}, fetch_device_info=True
             ),
             message,
@@ -478,9 +501,11 @@ def test__mqtt_command_callback_invalid_mac_address(
     ("topic", "payload"),
     [(b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set", b"ON")],
 )
-def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: bytes):
+def test__mqtt_command_callback_ignore_retained(
+    caplog: _pytest.logging.LogCaptureFixture, topic: bytes, payload: bytes
+) -> None:
     ActorMock = _mock_actor_class(
-        command_topic_levels=switchbot_mqtt._ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
+        command_topic_levels=_ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
     )
     message = MQTTMessage(topic=topic)
     message.payload = payload
@@ -494,7 +519,7 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
     ):
         ActorMock._mqtt_command_callback(
             "client_dummy",
-            switchbot_mqtt._MQTTCallbackUserdata(
+            _MQTTCallbackUserdata(
                 retry_count=4, device_passwords={}, fetch_device_info=True
             ),
             message,
@@ -516,7 +541,7 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
     # https://www.home-assistant.io/docs/mqtt/discovery/#switches
     [
         (
-            switchbot_mqtt._ButtonAutomator.MQTT_STATE_TOPIC_LEVELS,
+            _ButtonAutomator.MQTT_STATE_TOPIC_LEVELS,
             "aa:bb:cc:dd:ee:ff",
             "homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/state",
         ),
@@ -530,18 +555,20 @@ def test__mqtt_command_callback_ignore_retained(caplog, topic: bytes, payload: b
 @pytest.mark.parametrize("state", [b"ON", b"CLOSE"])
 @pytest.mark.parametrize("return_code", [MQTT_ERR_SUCCESS, MQTT_ERR_QUEUE_SIZE])
 def test__report_state(
-    caplog,
+    caplog: _pytest.logging.LogCaptureFixture,
     state_topic_levels: typing.List[_MQTTTopicLevel],
     mac_address: str,
     expected_topic: str,
     state: bytes,
     return_code: int,
-):
+) -> None:
     # pylint: disable=too-many-arguments
-    class _ActorMock(switchbot_mqtt._actors._MQTTControlledActor):
+    class _ActorMock(_MQTTControlledActor):
         MQTT_STATE_TOPIC_LEVELS = state_topic_levels
 
-        def __init__(self, mac_address, retry_count, password):
+        def __init__(
+            self, mac_address: str, retry_count: int, password: typing.Optional[str]
+        ) -> None:
             super().__init__(
                 mac_address=mac_address, retry_count=retry_count, password=password
             )
@@ -551,10 +578,10 @@ def test__report_state(
             mqtt_message_payload: bytes,
             mqtt_client: Client,
             update_device_info: bool,
-        ):
+        ) -> None:
             pass
 
-        def _get_device(self):
+        def _get_device(self) -> None:
             return None
 
     mqtt_client_mock = unittest.mock.MagicMock()
