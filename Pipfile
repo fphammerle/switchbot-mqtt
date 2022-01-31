@@ -7,7 +7,7 @@ name = "pypi"
 switchbot-mqtt = {editable = true,path = "."}
 
 [dev-packages]
-black = "==20.8b1"
+black = "*"
 mypy = "*"
 pylint = "*"
 pylint-import-requirements = "*"
