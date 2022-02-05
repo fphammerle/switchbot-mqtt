@@ -26,7 +26,6 @@ import pytest
 
 import switchbot_mqtt._utils
 from switchbot_mqtt._actors import _CurtainMotor
-from switchbot_mqtt._actors._base import _MQTTCallbackUserdata
 
 # pylint: disable=protected-access,
 # pylint: disable=too-many-arguments; these are tests, no API
@@ -331,14 +330,3 @@ def test_execute_command_bluetooth_error(
         logging.ERROR,
         f"failed to {message_payload.decode().lower()} switchbot curtain {mac_address}",
     )
-
-
-def test__mqtt_set_position_callback() -> None:
-    with pytest.raises(NotImplementedError):
-        _CurtainMotor._mqtt_set_position_callback(
-            mqtt_client="dummy",
-            userdata=_MQTTCallbackUserdata(
-                retry_count=3, device_passwords={}, fetch_device_info=False
-            ),
-            message=None,
-        )

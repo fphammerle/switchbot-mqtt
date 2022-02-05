@@ -72,7 +72,8 @@ setuptools.setup(
         "Topic :: Home Automation",
     ],
     entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt._cli:_main"]},
-    # >=3.6 variable type hints, f-strings & * to force keyword-only arguments
+    # >=3.6 variable type hints, f-strings, collections.abc.Collection
+    #       & * to force keyword-only arguments
     # >=3.7 postponed evaluation of type annotations (PEP563) & dataclass
     python_requires=">=3.7",
     install_requires=[
@@ -81,6 +82,7 @@ setuptools.setup(
         # https://github.com/IanHarvey/bluepy/tree/v/1.3.0#release-notes
         "bluepy>=1.3.0,<2",
         # >=0.10.0 for SwitchbotCurtain.{update,get_position}
+        # >=0.9.0 for SwitchbotCurtain.set_position
         "PySwitchbot>=0.10.0,<0.13",
         "paho-mqtt<2",
     ],

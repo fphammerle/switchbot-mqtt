@@ -233,7 +233,34 @@ class _CurtainMotor(_MQTTControlledActor):
         userdata: _MQTTCallbackUserdata,
         message: paho.mqtt.client.MQTTMessage,
     ) -> None:
-        raise NotImplementedError()
+        # pylint: disable=unused-argument; callback
+        # https://github.com/eclipse/paho.mqtt.python/blob/v1.6.1/src/paho/mqtt/client.py#L3556
+        _LOGGER.debug("received topic=%s payload=%r", message.topic, message.payload)
+        if message.retain:
+            _LOGGER.info("ignoring retained message on topic %s", message.topic)
+            return
+        actor = cls._init_from_topic(
+            userdata=userdata,
+            topic=message.topic,
+            expected_topic_levels=cls._MQTT_SET_POSITION_TOPIC_LEVELS,
+        )
+        if not actor:
+            return  # warning in _init_from_topic
+        position_percent = int(message.payload.decode(), 10)
+        if position_percent < 0 or position_percent > 100:
+            _LOGGER.warning("invalid position %u%%, ignoring message", position_percent)
+            return
+        # pylint: disable=protected-access; own instance
+        if actor._get_device().set_position(position_percent):
+            _LOGGER.info(
+                "set position of switchbot curtain %s to %u%%",
+                actor._mac_address,
+                position_percent,
+            )
+        else:
+            _LOGGER.error(
+                "failed to set position of switchbot curtain %s", actor._mac_address
+            )
 
     @classmethod
     def _get_mqtt_message_callbacks(
