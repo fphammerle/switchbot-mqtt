@@ -49,14 +49,11 @@ def test__update_and_report_device_info(
     with unittest.mock.patch("switchbot.Switchbot.update") as update_mock:
         actor._update_and_report_device_info(mqtt_client=mqtt_client_mock)
     update_mock.assert_called_once_with()
-    assert mqtt_client_mock.publish.call_args_list == [
-        unittest.mock.call(topic=t, payload=battery_percent_encoded, retain=True)
-        for t in [
-            "homeassistant/switch/switchbot/dummy/battery-percentage",
-            # will be removed in v3:
-            "homeassistant/cover/switchbot/dummy/battery-percentage",
-        ]
-    ]
+    mqtt_client_mock.publish.assert_called_once_with(
+        topic="homeassistant/switch/switchbot/dummy/battery-percentage",
+        payload=battery_percent_encoded,
+        retain=True,
+    )
 
 
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
