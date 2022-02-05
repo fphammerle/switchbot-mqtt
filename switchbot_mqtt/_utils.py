@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import collections.abc
 import enum
 import logging
 import queue  # pylint: disable=unused-import; in type hint
@@ -47,7 +46,7 @@ def _join_mqtt_topic_levels(
 
 
 def _parse_mqtt_topic(
-    topic: str, expected_levels: collections.abc.Collection[_MQTTTopicLevel]
+    topic: str, expected_levels: typing.Collection[_MQTTTopicLevel]
 ) -> typing.Dict[_MQTTTopicPlaceholder, str]:
     attrs: typing.Dict[_MQTTTopicPlaceholder, str] = {}
     topic_split = topic.split("/")

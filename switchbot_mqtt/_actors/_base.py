@@ -19,7 +19,6 @@
 from __future__ import annotations  # PEP563 (default in python>=3.10)
 
 import abc
-import collections.abc
 import dataclasses
 import logging
 import queue
@@ -138,7 +137,7 @@ class _MQTTControlledActor(abc.ABC):
         cls,
         userdata: _MQTTCallbackUserdata,
         topic: str,
-        expected_topic_levels: collections.abc.Collection[_MQTTTopicLevel],
+        expected_topic_levels: typing.Collection[_MQTTTopicLevel],
     ) -> typing.Optional[_MQTTControlledActor]:
         try:
             mac_address = _parse_mqtt_topic(

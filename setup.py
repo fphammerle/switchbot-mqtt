@@ -72,8 +72,7 @@ setuptools.setup(
         "Topic :: Home Automation",
     ],
     entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt._cli:_main"]},
-    # >=3.6 variable type hints, f-strings, collections.abc.Collection
-    #       & * to force keyword-only arguments
+    # >=3.6 variable type hints, f-strings, typing.Collection & * to force keyword-only arguments
     # >=3.7 postponed evaluation of type annotations (PEP563) & dataclass
     python_requires=">=3.7",
     install_requires=[
