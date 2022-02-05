@@ -176,8 +176,8 @@ def test__run_authentication_missing_username(
 
 def _mock_actor_class(
     *,
-    command_topic_levels: typing.List[_MQTTTopicLevel] = NotImplemented,
-    request_info_levels: typing.List[_MQTTTopicLevel] = NotImplemented,
+    command_topic_levels: typing.Tuple[_MQTTTopicLevel, ...] = NotImplemented,
+    request_info_levels: typing.Tuple[_MQTTTopicLevel, ...] = NotImplemented,
 ) -> typing.Type:
     class _ActorMock(_MQTTControlledActor):
         MQTT_COMMAND_TOPIC_LEVELS = command_topic_levels
@@ -217,7 +217,7 @@ def _mock_actor_class(
 @pytest.mark.parametrize("payload", [b"", b"whatever"])
 def test__mqtt_update_device_info_callback(
     caplog: _pytest.logging.LogCaptureFixture,
-    topic_levels: typing.List[_MQTTTopicLevel],
+    topic_levels: typing.Tuple[_MQTTTopicLevel, ...],
     topic: bytes,
     expected_mac_address: str,
     payload: bytes,
@@ -257,7 +257,7 @@ def test__mqtt_update_device_info_callback_ignore_retained(
     caplog: _pytest.logging.LogCaptureFixture,
 ) -> None:
     ActorMock = _mock_actor_class(
-        request_info_levels=[_MQTTTopicPlaceholder.MAC_ADDRESS, "request"]
+        request_info_levels=(_MQTTTopicPlaceholder.MAC_ADDRESS, "request")
     )
     message = MQTTMessage(topic=b"aa:bb:cc:dd:ee:ff/request")
     message.payload = b""
@@ -339,7 +339,7 @@ def test__mqtt_update_device_info_callback_ignore_retained(
 @pytest.mark.parametrize("fetch_device_info", [True, False])
 def test__mqtt_command_callback(
     caplog: _pytest.logging.LogCaptureFixture,
-    command_topic_levels: typing.List[_MQTTTopicLevel],
+    command_topic_levels: typing.Tuple[_MQTTTopicLevel, ...],
     topic: bytes,
     payload: bytes,
     expected_mac_address: str,
@@ -391,7 +391,7 @@ def test__mqtt_command_callback_password(
     mac_address: str, expected_password: typing.Optional[str]
 ) -> None:
     ActorMock = _mock_actor_class(
-        command_topic_levels=["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS]
+        command_topic_levels=("switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS)
     )
     message = MQTTMessage(topic=b"switchbot/" + mac_address.encode())
     message.payload = b"whatever"
@@ -565,7 +565,7 @@ def test__mqtt_command_callback_ignore_retained(
 @pytest.mark.parametrize("return_code", [MQTT_ERR_SUCCESS, MQTT_ERR_QUEUE_SIZE])
 def test__report_state(
     caplog: _pytest.logging.LogCaptureFixture,
-    state_topic_levels: typing.List[_MQTTTopicLevel],
+    state_topic_levels: typing.Tuple[_MQTTTopicLevel, ...],
     mac_address: str,
     expected_topic: str,
     state: bytes,

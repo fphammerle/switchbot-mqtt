@@ -33,37 +33,37 @@ from switchbot_mqtt._utils import (
 _LOGGER = logging.getLogger(__name__)
 
 # "homeassistant" for historic reason, may be parametrized in future
-_TOPIC_LEVELS_PREFIX: typing.List[_MQTTTopicLevel] = ["homeassistant"]
-_BUTTON_TOPIC_LEVELS_PREFIX = _TOPIC_LEVELS_PREFIX + [
+_TOPIC_LEVELS_PREFIX: typing.Tuple[_MQTTTopicLevel] = ("homeassistant",)
+_BUTTON_TOPIC_LEVELS_PREFIX = _TOPIC_LEVELS_PREFIX + (
     "switch",
     "switchbot",
     _MQTTTopicPlaceholder.MAC_ADDRESS,
-]
-_CURTAIN_TOPIC_LEVELS_PREFIX = _TOPIC_LEVELS_PREFIX + [
+)
+_CURTAIN_TOPIC_LEVELS_PREFIX = _TOPIC_LEVELS_PREFIX + (
     "cover",
     "switchbot-curtain",
     _MQTTTopicPlaceholder.MAC_ADDRESS,
-]
+)
 
 
 class _ButtonAutomator(_MQTTControlledActor):
     # https://www.home-assistant.io/integrations/switch.mqtt/
 
-    MQTT_COMMAND_TOPIC_LEVELS = _BUTTON_TOPIC_LEVELS_PREFIX + ["set"]
-    _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = _BUTTON_TOPIC_LEVELS_PREFIX + [
-        "request-device-info"
-    ]
-    MQTT_STATE_TOPIC_LEVELS = _BUTTON_TOPIC_LEVELS_PREFIX + ["state"]
-    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS = _BUTTON_TOPIC_LEVELS_PREFIX + [
-        "battery-percentage"
-    ]
+    MQTT_COMMAND_TOPIC_LEVELS = _BUTTON_TOPIC_LEVELS_PREFIX + ("set",)
+    _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = _BUTTON_TOPIC_LEVELS_PREFIX + (
+        "request-device-info",
+    )
+    MQTT_STATE_TOPIC_LEVELS = _BUTTON_TOPIC_LEVELS_PREFIX + ("state",)
+    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS = _BUTTON_TOPIC_LEVELS_PREFIX + (
+        "battery-percentage",
+    )
     # for downward compatibility (will be removed in v3):
-    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS_LEGACY = _TOPIC_LEVELS_PREFIX + [
+    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS_LEGACY = _TOPIC_LEVELS_PREFIX + (
         "cover",
         "switchbot",
         _MQTTTopicPlaceholder.MAC_ADDRESS,
         "battery-percentage",
-    ]
+    )
 
     def __init__(
         self, *, mac_address: str, retry_count: int, password: typing.Optional[str]
@@ -121,19 +121,19 @@ class _ButtonAutomator(_MQTTControlledActor):
 class _CurtainMotor(_MQTTControlledActor):
 
     # https://www.home-assistant.io/integrations/cover.mqtt/
-    MQTT_COMMAND_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ["set"]
+    MQTT_COMMAND_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ("set",)
     _MQTT_SET_POSITION_TOPIC_LEVELS = tuple(_CURTAIN_TOPIC_LEVELS_PREFIX) + (
         "position",
         "set-percent",
     )
-    _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + [
-        "request-device-info"
-    ]
-    MQTT_STATE_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ["state"]
-    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + [
-        "battery-percentage"
-    ]
-    _MQTT_POSITION_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ["position"]
+    _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + (
+        "request-device-info",
+    )
+    MQTT_STATE_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ("state",)
+    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + (
+        "battery-percentage",
+    )
+    _MQTT_POSITION_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ("position",)
 
     @classmethod
     def get_mqtt_position_topic(cls, mac_address: str) -> str:

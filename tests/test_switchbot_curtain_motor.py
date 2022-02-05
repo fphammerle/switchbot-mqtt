@@ -82,13 +82,13 @@ def test__report_position(
     ):
         actor._report_position(mqtt_client="dummy")
     publish_mock.assert_called_once_with(
-        topic_levels=[
+        topic_levels=(
             "homeassistant",
             "cover",
             "switchbot-curtain",
             switchbot_mqtt._utils._MQTTTopicPlaceholder.MAC_ADDRESS,
             "position",
-        ],
+        ),
         payload=expected_payload,
         mqtt_client="dummy",
     )
