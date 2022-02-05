@@ -45,10 +45,17 @@ The report may be requested manually by sending a MQTT message to the topic
 
 ### Curtain Motor
 
-Send `OPEN`, `CLOSE`, or `STOP` to topic `homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/set`.
+Send `OPEN`, `CLOSE`, or `STOP` to topic `homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/set`:
 
 ```sh
 $ mosquitto_pub -h MQTT_BROKER -t homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/set -m CLOSE
+```
+
+Or a position in percent (0 fully closed, 100 fully opened) to topic
+`homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent`:
+
+```sh
+$ mosquitto_pub -h MQTT_BROKER -t homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent -m 42
 ```
 
 The command-line option `--fetch-device-info` enables position reports on topic
@@ -128,6 +135,7 @@ cover:
 - platform: mqtt
   name: switchbot_curtains
   command_topic: homeassistant/cover/switchbot-curtain/11:22:33:44:55:66/set
+  set_position_topic: homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent
   state_topic: homeassistant/cover/switchbot-curtain/11:22:33:44:55:66/state
 ```
 

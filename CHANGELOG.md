@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- MQTT messages on topic `homeassistant/cover/switchbot-curtain/MAC_ADDRESS/position/set-percent`
+  trigger command to set curtain motors' position (payload: decimal integer in range `[0, 100]`)
 - support `PySwitchbot` `v0.11.0` and `v0.12.0`
 
 ### Removed
