@@ -77,10 +77,11 @@ def test__run(
     with caplog.at_level(logging.DEBUG):
         mqtt_client_mock().on_connect(mqtt_client_mock(), userdata, {}, 0)
     subscribe_mock = mqtt_client_mock().subscribe
-    assert subscribe_mock.call_count == (4 if fetch_device_info else 2)
+    assert subscribe_mock.call_count == (5 if fetch_device_info else 3)
     for topic in [
         "homeassistant/switch/switchbot/+/set",
         "homeassistant/cover/switchbot-curtain/+/set",
+        "homeassistant/cover/switchbot-curtain/+/position/set-percent",
     ]:
         assert unittest.mock.call(topic) in subscribe_mock.call_args_list
     for topic in [
@@ -90,6 +91,14 @@ def test__run(
         assert (
             unittest.mock.call(topic) in subscribe_mock.call_args_list
         ) == fetch_device_info
+    callbacks = {
+        c[1]["sub"]: c[1]["callback"]
+        for c in mqtt_client_mock().message_callback_add.call_args_list
+    }
+    assert (  # pylint: disable=comparison-with-callable; intended
+        callbacks["homeassistant/cover/switchbot-curtain/+/position/set-percent"]
+        == _CurtainMotor._mqtt_set_position_callback
+    )
     mqtt_client_mock().loop_forever.assert_called_once_with()
     assert caplog.record_tuples[:2] == [
         (
@@ -103,7 +112,7 @@ def test__run(
             f"connected to MQTT broker {mqtt_host}:{mqtt_port}",
         ),
     ]
-    assert len(caplog.record_tuples) == (6 if fetch_device_info else 4)
+    assert len(caplog.record_tuples) == (7 if fetch_device_info else 5)
     assert (
         "switchbot_mqtt._actors._base",
         logging.INFO,

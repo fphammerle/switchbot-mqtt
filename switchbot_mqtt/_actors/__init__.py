@@ -23,7 +23,7 @@ import bluepy.btle
 import paho.mqtt.client
 import switchbot
 
-from switchbot_mqtt._actors._base import _MQTTControlledActor
+from switchbot_mqtt._actors._base import _MQTTCallbackUserdata, _MQTTControlledActor
 from switchbot_mqtt._utils import (
     _join_mqtt_topic_levels,
     _MQTTTopicLevel,
@@ -119,9 +119,13 @@ class _ButtonAutomator(_MQTTControlledActor):
 
 
 class _CurtainMotor(_MQTTControlledActor):
-    # https://www.home-assistant.io/integrations/cover.mqtt/
 
+    # https://www.home-assistant.io/integrations/cover.mqtt/
     MQTT_COMMAND_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ["set"]
+    _MQTT_SET_POSITION_TOPIC_LEVELS = tuple(_CURTAIN_TOPIC_LEVELS_PREFIX) + (
+        "position",
+        "set-percent",
+    )
     _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + [
         "request-device-info"
     ]
@@ -221,3 +225,24 @@ class _CurtainMotor(_MQTTControlledActor):
             self._update_and_report_device_info(
                 mqtt_client=mqtt_client, report_position=report_position
             )
+
+    @classmethod
+    def _mqtt_set_position_callback(
+        cls,
+        mqtt_client: paho.mqtt.client.Client,
+        userdata: _MQTTCallbackUserdata,
+        message: paho.mqtt.client.MQTTMessage,
+    ) -> None:
+        raise NotImplementedError()
+
+    @classmethod
+    def _get_mqtt_message_callbacks(
+        cls,
+        *,
+        enable_device_info_update_topic: bool,
+    ) -> typing.Dict[typing.Tuple[_MQTTTopicLevel, ...], typing.Callable]:
+        callbacks = super()._get_mqtt_message_callbacks(
+            enable_device_info_update_topic=enable_device_info_update_topic
+        )
+        callbacks[cls._MQTT_SET_POSITION_TOPIC_LEVELS] = cls._mqtt_set_position_callback
+        return callbacks

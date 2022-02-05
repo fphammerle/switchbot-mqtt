@@ -37,7 +37,7 @@ _MQTTTopicLevel = typing.Union[str, _MQTTTopicPlaceholder]
 
 
 def _join_mqtt_topic_levels(
-    topic_levels: typing.List[_MQTTTopicLevel], mac_address: str
+    topic_levels: typing.Iterable[_MQTTTopicLevel], mac_address: str
 ) -> str:
     return "/".join(
         mac_address if l == _MQTTTopicPlaceholder.MAC_ADDRESS else typing.cast(str, l)

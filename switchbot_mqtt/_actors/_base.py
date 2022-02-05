@@ -212,21 +212,32 @@ class _MQTTControlledActor(abc.ABC):
             )
 
     @classmethod
+    def _get_mqtt_message_callbacks(
+        cls,
+        *,
+        enable_device_info_update_topic: bool,
+    ) -> typing.Dict[typing.Tuple[_MQTTTopicLevel, ...], typing.Callable]:
+        # returning dict because `paho.mqtt.client.Client.message_callback_add` overwrites
+        # callbacks with same topic pattern
+        # https://github.com/eclipse/paho.mqtt.python/blob/v1.6.1/src/paho/mqtt/client.py#L2304
+        # https://github.com/eclipse/paho.mqtt.python/blob/v1.6.1/src/paho/mqtt/matcher.py#L19
+        callbacks = {tuple(cls.MQTT_COMMAND_TOPIC_LEVELS): cls._mqtt_command_callback}
+        if enable_device_info_update_topic:
+            callbacks[
+                tuple(cls._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS)
+            ] = cls._mqtt_update_device_info_callback
+        return callbacks
+
+    @classmethod
     def mqtt_subscribe(
         cls,
         mqtt_client: paho.mqtt.client.Client,
         *,
         enable_device_info_update_topic: bool,
     ) -> None:
-        topics = [(cls.MQTT_COMMAND_TOPIC_LEVELS, cls._mqtt_command_callback)]
-        if enable_device_info_update_topic:
-            topics.append(
-                (
-                    cls._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS,
-                    cls._mqtt_update_device_info_callback,
-                )
-            )
-        for topic_levels, callback in topics:
+        for topic_levels, callback in cls._get_mqtt_message_callbacks(
+            enable_device_info_update_topic=enable_device_info_update_topic
+        ).items():
             topic = _join_mqtt_topic_levels(topic_levels, mac_address="+")
             _LOGGER.info("subscribing to MQTT topic %r", topic)
             mqtt_client.subscribe(topic)
