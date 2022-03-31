@@ -110,6 +110,7 @@ def _main() -> None:
         mqtt_port=args.mqtt_port,
         mqtt_username=args.mqtt_username,
         mqtt_password=mqtt_password,
+        mqtt_disable_tls=True,
         retry_count=args.retry_count,
         device_passwords=device_passwords,
         fetch_device_info=args.fetch_device_info

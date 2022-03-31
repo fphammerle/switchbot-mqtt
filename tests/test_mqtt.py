@@ -58,6 +58,7 @@ def test__run(
             mqtt_port=mqtt_port,
             mqtt_username=None,
             mqtt_password=None,
+            mqtt_disable_tls=False,
             retry_count=retry_count,
             device_passwords=device_passwords,
             fetch_device_info=fetch_device_info,
@@ -72,6 +73,7 @@ def test__run(
         fetch_device_info=fetch_device_info,
     )
     assert not mqtt_client_mock().username_pw_set.called
+    mqtt_client_mock().tls_set.assert_called_once_with(ca_certs=None)
     mqtt_client_mock().connect.assert_called_once_with(host=mqtt_host, port=mqtt_port)
     mqtt_client_mock().socket().getpeername.return_value = (mqtt_host, mqtt_port)
     with caplog.at_level(logging.DEBUG):
@@ -125,6 +127,25 @@ def test__run(
     ) in caplog.record_tuples
 
 
+@pytest.mark.parametrize("mqtt_disable_tls", [True, False])
+def test__run_tls(mqtt_disable_tls: bool) -> None:
+    with unittest.mock.patch("paho.mqtt.client.Client") as mqtt_client_mock:
+        switchbot_mqtt._run(
+            mqtt_host="mqtt.local",
+            mqtt_port=1234,
+            mqtt_username=None,
+            mqtt_password=None,
+            mqtt_disable_tls=mqtt_disable_tls,
+            retry_count=21,
+            device_passwords={},
+            fetch_device_info=True,
+        )
+    if mqtt_disable_tls:
+        mqtt_client_mock().tls_set.assert_not_called()
+    else:
+        mqtt_client_mock().tls_set.assert_called_once_with(ca_certs=None)
+
+
 @pytest.mark.parametrize("mqtt_host", ["mqtt-broker.local"])
 @pytest.mark.parametrize("mqtt_port", [1833])
 @pytest.mark.parametrize("mqtt_username", ["me"])
@@ -141,6 +162,7 @@ def test__run_authentication(
             mqtt_port=mqtt_port,
             mqtt_username=mqtt_username,
             mqtt_password=mqtt_password,
+            mqtt_disable_tls=True,
             retry_count=7,
             device_passwords={},
             fetch_device_info=True,
@@ -168,6 +190,7 @@ def test__run_authentication_missing_username(
                 mqtt_port=mqtt_port,
                 mqtt_username=None,
                 mqtt_password=mqtt_password,
+                mqtt_disable_tls=True,
                 retry_count=3,
                 device_passwords={},
                 fetch_device_info=True,

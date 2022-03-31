@@ -54,6 +54,7 @@ def _run(
     mqtt_port: int,
     mqtt_username: typing.Optional[str],
     mqtt_password: typing.Optional[str],
+    mqtt_disable_tls: bool,
     retry_count: int,
     device_passwords: typing.Dict[str, str],
     fetch_device_info: bool,
@@ -68,6 +69,8 @@ def _run(
     )
     mqtt_client.on_connect = _mqtt_on_connect
     _LOGGER.info("connecting to MQTT broker %s:%d", mqtt_host, mqtt_port)
+    if not mqtt_disable_tls:
+        mqtt_client.tls_set(ca_certs=None)  # enable tls trusting default system certs
     if mqtt_username:
         mqtt_client.username_pw_set(username=mqtt_username, password=mqtt_password)
     elif mqtt_password:
