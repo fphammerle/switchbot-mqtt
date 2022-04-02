@@ -103,7 +103,7 @@ def test__main(
 ) -> None:
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv", argv
-    ):
+    ), pytest.warns(UserWarning, match=r"Please add --mqtt-disable-tls\b"):
         switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(
         mqtt_host=expected_mqtt_host,
@@ -234,6 +234,21 @@ _RUN_DEFAULT_KWARGS: typing.Dict[str, typing.Any] = {
 }
 
 
+def test__main_mqtt_disable_tls_implicit() -> None:
+    with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
+        "sys.argv", ["", "--mqtt-host", "mqtt.local"]
+    ), pytest.warns(UserWarning, match=r"Please add --mqtt-disable-tls\b"):
+        switchbot_mqtt._cli._main()
+    run_mock.assert_called_once_with(
+        **{
+            **_RUN_DEFAULT_KWARGS,
+            "mqtt_host": "mqtt.local",
+            "mqtt_disable_tls": True,
+            "mqtt_port": 1883,
+        }
+    )
+
+
 def test__main_mqtt_enable_tls() -> None:
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv", ["", "--mqtt-host", "mqtt.local", "--mqtt-enable-tls"]
@@ -252,6 +267,19 @@ def test__main_mqtt_enable_tls_overwrite_port() -> None:
         switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(
         **{**_RUN_DEFAULT_KWARGS, "mqtt_host": "mqtt.local", "mqtt_port": 1883}
+    )
+
+
+def test__main_mqtt_tls_collision(capsys: _pytest.capture.CaptureFixture) -> None:
+    with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
+        "sys.argv",
+        ["", "--mqtt-host", "mqtt.local", "--mqtt-enable-tls", "--mqtt-disable-tls"],
+    ), pytest.raises(SystemExit):
+        switchbot_mqtt._cli._main()
+    run_mock.assert_not_called()
+    assert (
+        "error: argument --mqtt-disable-tls: not allowed with argument --mqtt-enable-tls\n"
+        in capsys.readouterr()[1]
     )
 
 

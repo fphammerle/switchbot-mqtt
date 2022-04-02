@@ -22,7 +22,9 @@ $ pip3 install --user --upgrade switchbot-mqtt
 ## Usage
 
 ```sh
-$ switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS
+$ switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS --mqtt-enable-tls
+# or
+$ switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS --mqtt-disable-tls
 ```
 
 Use `sudo hcitool lescan`

@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import pathlib
+import warnings
 
 import switchbot
 
@@ -44,10 +45,14 @@ def _main() -> None:
         type=int,
         help=f"default {_MQTT_DEFAULT_PORT} ({_MQTT_DEFAULT_TLS_PORT} with --mqtt-enable-tls)",
     )
-    argparser.add_argument(
+    mqtt_tls_argument_group = argparser.add_mutually_exclusive_group()
+    mqtt_tls_argument_group.add_argument(
         "--mqtt-enable-tls",
         action="store_true",
         help="TLS will be enabled by default in the next major release",
+    )
+    mqtt_tls_argument_group.add_argument(  # for upward compatibility
+        "--mqtt-disable-tls", action="store_true", help="Currently enabled by default"
     )
     argparser.add_argument("--mqtt-username", type=str)
     password_argument_group = argparser.add_mutually_exclusive_group()
@@ -110,6 +115,13 @@ def _main() -> None:
         mqtt_port = _MQTT_DEFAULT_TLS_PORT
     else:
         mqtt_port = _MQTT_DEFAULT_PORT
+    if not args.mqtt_enable_tls and not args.mqtt_disable_tls:
+        warnings.warn(
+            "In switchbot-mqtt's next major release, TLS will be enabled by default"
+            " (--mqtt-enable-tls)."
+            " Please add --mqtt-disable-tls to your command for upward compatibility.",
+            UserWarning,  # DeprecationWarning ignored by default
+        )
     if args.mqtt_password_path:
         # .read_text() replaces \r\n with \n
         mqtt_password = args.mqtt_password_path.read_bytes().decode()

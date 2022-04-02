@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - command-line option `--mqtt-enable-tls`
+- command-line option `--mqtt-disable-tls` (enabled by default)
+
+### Deprecated
+- invocation without `--mqtt-enable-tls` and `--mqtt-disable-tls`
 
 ## [3.0.0] - 2022-02-05
 ### Added
