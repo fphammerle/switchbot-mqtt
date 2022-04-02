@@ -223,6 +223,38 @@ def test__main_device_password_file(
     )
 
 
+_RUN_DEFAULT_KWARGS: typing.Dict[str, typing.Any] = {
+    "mqtt_port": 1883,
+    "mqtt_username": None,
+    "mqtt_password": None,
+    "mqtt_disable_tls": False,
+    "retry_count": 3,
+    "device_passwords": {},
+    "fetch_device_info": False,
+}
+
+
+def test__main_mqtt_enable_tls() -> None:
+    with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
+        "sys.argv", ["", "--mqtt-host", "mqtt.local", "--mqtt-enable-tls"]
+    ):
+        switchbot_mqtt._cli._main()
+    run_mock.assert_called_once_with(
+        **{**_RUN_DEFAULT_KWARGS, "mqtt_host": "mqtt.local", "mqtt_port": 8883}
+    )
+
+
+def test__main_mqtt_enable_tls_overwrite_port() -> None:
+    with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
+        "sys.argv",
+        ["", "--mqtt-host", "mqtt.local", "--mqtt-port", "1883", "--mqtt-enable-tls"],
+    ):
+        switchbot_mqtt._cli._main()
+    run_mock.assert_called_once_with(
+        **{**_RUN_DEFAULT_KWARGS, "mqtt_host": "mqtt.local", "mqtt_port": 1883}
+    )
+
+
 def test__main_fetch_device_info() -> None:
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",

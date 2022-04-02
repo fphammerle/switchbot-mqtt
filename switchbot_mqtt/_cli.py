@@ -27,6 +27,9 @@ import switchbot
 import switchbot_mqtt
 from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
 
+_MQTT_DEFAULT_PORT = 1883
+_MQTT_DEFAULT_TLS_PORT = 8883
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -36,7 +39,16 @@ def _main() -> None:
         "compatible with home-assistant.io's MQTT Switch platform"
     )
     argparser.add_argument("--mqtt-host", type=str, required=True)
-    argparser.add_argument("--mqtt-port", type=int, default=1883)
+    argparser.add_argument(
+        "--mqtt-port",
+        type=int,
+        help=f"default {_MQTT_DEFAULT_PORT} ({_MQTT_DEFAULT_TLS_PORT} with --mqtt-enable-tls)",
+    )
+    argparser.add_argument(
+        "--mqtt-enable-tls",
+        action="store_true",
+        help="TLS will be enabled by default in the next major release",
+    )
     argparser.add_argument("--mqtt-username", type=str)
     password_argument_group = argparser.add_mutually_exclusive_group()
     password_argument_group.add_argument("--mqtt-password", type=str)
@@ -92,6 +104,12 @@ def _main() -> None:
         datefmt="%Y-%m-%dT%H:%M:%S%z",
     )
     _LOGGER.debug("args=%r", args)
+    if args.mqtt_port:
+        mqtt_port = args.mqtt_port
+    elif args.mqtt_enable_tls:
+        mqtt_port = _MQTT_DEFAULT_TLS_PORT
+    else:
+        mqtt_port = _MQTT_DEFAULT_PORT
     if args.mqtt_password_path:
         # .read_text() replaces \r\n with \n
         mqtt_password = args.mqtt_password_path.read_bytes().decode()
@@ -107,10 +125,10 @@ def _main() -> None:
         device_passwords = {}
     switchbot_mqtt._run(  # pylint: disable=protected-access; internal
         mqtt_host=args.mqtt_host,
-        mqtt_port=args.mqtt_port,
+        mqtt_port=mqtt_port,
         mqtt_username=args.mqtt_username,
         mqtt_password=mqtt_password,
-        mqtt_disable_tls=True,
+        mqtt_disable_tls=not args.mqtt_enable_tls,
         retry_count=args.retry_count,
         device_passwords=device_passwords,
         fetch_device_info=args.fetch_device_info
