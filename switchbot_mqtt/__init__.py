@@ -68,7 +68,12 @@ def _run(
         )
     )
     mqtt_client.on_connect = _mqtt_on_connect
-    _LOGGER.info("connecting to MQTT broker %s:%d", mqtt_host, mqtt_port)
+    _LOGGER.info(
+        "connecting to MQTT broker %s:%d (TLS %s)",
+        mqtt_host,
+        mqtt_port,
+        "disabled" if mqtt_disable_tls else "enabled",
+    )
     if not mqtt_disable_tls:
         mqtt_client.tls_set(ca_certs=None)  # enable tls trusting default system certs
     if mqtt_username:

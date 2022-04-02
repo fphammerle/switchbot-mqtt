@@ -106,7 +106,7 @@ def test__run(
         (
             "switchbot_mqtt",
             logging.INFO,
-            f"connecting to MQTT broker {mqtt_host}:{mqtt_port}",
+            f"connecting to MQTT broker {mqtt_host}:{mqtt_port} (TLS enabled)",
         ),
         (
             "switchbot_mqtt",
@@ -128,8 +128,12 @@ def test__run(
 
 
 @pytest.mark.parametrize("mqtt_disable_tls", [True, False])
-def test__run_tls(mqtt_disable_tls: bool) -> None:
-    with unittest.mock.patch("paho.mqtt.client.Client") as mqtt_client_mock:
+def test__run_tls(
+    caplog: _pytest.logging.LogCaptureFixture, mqtt_disable_tls: bool
+) -> None:
+    with unittest.mock.patch(
+        "paho.mqtt.client.Client"
+    ) as mqtt_client_mock, caplog.at_level(logging.INFO):
         switchbot_mqtt._run(
             mqtt_host="mqtt.local",
             mqtt_port=1234,
@@ -144,6 +148,10 @@ def test__run_tls(mqtt_disable_tls: bool) -> None:
         mqtt_client_mock().tls_set.assert_not_called()
     else:
         mqtt_client_mock().tls_set.assert_called_once_with(ca_certs=None)
+    if mqtt_disable_tls:
+        assert caplog.record_tuples[0][2].endswith(" (TLS disabled)")
+    else:
+        assert caplog.record_tuples[0][2].endswith(" (TLS enabled)")
 
 
 @pytest.mark.parametrize("mqtt_host", ["mqtt-broker.local"])
