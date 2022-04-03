@@ -27,10 +27,10 @@ import switchbot
 
 import switchbot_mqtt
 from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
-from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
 
 _MQTT_DEFAULT_PORT = 1883
 _MQTT_DEFAULT_TLS_PORT = 8883
+_MQTT_TOPIC_PREFIX = "homeassistant/"  # for historic reasons
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,25 +86,25 @@ def _main() -> None:
         action="store_true",
         help="Report devices' battery level on topic "
         + _ButtonAutomator.get_mqtt_battery_percentage_topic(
-            prefix=_MQTTCallbackUserdata.mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
         )
         + " or, respectively,"
         + _CurtainMotor.get_mqtt_battery_percentage_topic(
-            prefix=_MQTTCallbackUserdata.mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
         )
         + " after every command. Additionally report curtain motors' position on topic "
         + _CurtainMotor.get_mqtt_position_topic(
-            prefix=_MQTTCallbackUserdata.mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
         )
         + " after executing stop commands."
         " When this option is enabled, the mentioned reports may also be requested"
         " by sending a MQTT message to the topic "
         + _ButtonAutomator.get_mqtt_update_device_info_topic(
-            prefix=_MQTTCallbackUserdata.mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
         )
         + " or "
         + _CurtainMotor.get_mqtt_update_device_info_topic(
-            prefix=_MQTTCallbackUserdata.mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
         )
         + ". This option can also be enabled by assigning a non-empty value to the"
         " environment variable FETCH_DEVICE_INFO.",
@@ -149,9 +149,10 @@ def _main() -> None:
     switchbot_mqtt._run(  # pylint: disable=protected-access; internal
         mqtt_host=args.mqtt_host,
         mqtt_port=mqtt_port,
+        mqtt_disable_tls=not args.mqtt_enable_tls,
         mqtt_username=args.mqtt_username,
         mqtt_password=mqtt_password,
-        mqtt_disable_tls=not args.mqtt_enable_tls,
+        mqtt_topic_prefix=_MQTT_TOPIC_PREFIX,
         retry_count=args.retry_count,
         device_passwords=device_passwords,
         fetch_device_info=args.fetch_device_info

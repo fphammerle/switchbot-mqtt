@@ -108,9 +108,10 @@ def test__main(
     run_mock.assert_called_once_with(
         mqtt_host=expected_mqtt_host,
         mqtt_port=expected_mqtt_port,
+        mqtt_disable_tls=True,
         mqtt_username=expected_username,
         mqtt_password=expected_password,
-        mqtt_disable_tls=True,
+        mqtt_topic_prefix="homeassistant/",
         retry_count=expected_retry_count,
         device_passwords={},
         fetch_device_info=False,
@@ -152,9 +153,10 @@ def test__main_mqtt_password_file(
     run_mock.assert_called_once_with(
         mqtt_host="localhost",
         mqtt_port=1883,
+        mqtt_disable_tls=True,
         mqtt_username="me",
         mqtt_password=expected_password,
-        mqtt_disable_tls=True,
+        mqtt_topic_prefix="homeassistant/",
         retry_count=3,
         device_passwords={},
         fetch_device_info=False,
@@ -214,9 +216,10 @@ def test__main_device_password_file(
     run_mock.assert_called_once_with(
         mqtt_host="localhost",
         mqtt_port=1883,
+        mqtt_disable_tls=True,
         mqtt_username=None,
         mqtt_password=None,
-        mqtt_disable_tls=True,
+        mqtt_topic_prefix="homeassistant/",
         retry_count=3,
         device_passwords=device_passwords,
         fetch_device_info=False,
@@ -224,10 +227,12 @@ def test__main_device_password_file(
 
 
 _RUN_DEFAULT_KWARGS: typing.Dict[str, typing.Any] = {
+    "mqtt_host": "localhost",
     "mqtt_port": 1883,
+    "mqtt_disable_tls": True,
     "mqtt_username": None,
     "mqtt_password": None,
-    "mqtt_disable_tls": False,
+    "mqtt_topic_prefix": "homeassistant/",
     "retry_count": 3,
     "device_passwords": {},
     "fetch_device_info": False,
@@ -255,7 +260,12 @@ def test__main_mqtt_enable_tls() -> None:
     ):
         switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(
-        **{**_RUN_DEFAULT_KWARGS, "mqtt_host": "mqtt.local", "mqtt_port": 8883}
+        **{
+            **_RUN_DEFAULT_KWARGS,
+            "mqtt_host": "mqtt.local",
+            "mqtt_disable_tls": False,
+            "mqtt_port": 8883,
+        }
     )
 
 
@@ -266,7 +276,12 @@ def test__main_mqtt_enable_tls_overwrite_port() -> None:
     ):
         switchbot_mqtt._cli._main()
     run_mock.assert_called_once_with(
-        **{**_RUN_DEFAULT_KWARGS, "mqtt_host": "mqtt.local", "mqtt_port": 1883}
+        **{
+            **_RUN_DEFAULT_KWARGS,
+            "mqtt_host": "mqtt.local",
+            "mqtt_disable_tls": False,
+            "mqtt_port": 1883,
+        }
     )
 
 
@@ -293,40 +308,41 @@ def test__main_fetch_device_info() -> None:
         ],
     ):
         switchbot_mqtt._cli._main()
-    default_kwargs = dict(
-        mqtt_host="localhost",
-        mqtt_port=1883,
-        mqtt_username=None,
-        mqtt_password=None,
-        mqtt_disable_tls=True,
-        retry_count=3,
-        device_passwords={},
+    run_mock.assert_called_once_with(
+        **{**_RUN_DEFAULT_KWARGS, "fetch_device_info": False}
     )
-    run_mock.assert_called_once_with(fetch_device_info=False, **default_kwargs)
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
         ["", "--mqtt-host", "localhost", "--fetch-device-info"],
     ):
         switchbot_mqtt._cli._main()
-    run_mock.assert_called_once_with(fetch_device_info=True, **default_kwargs)
+    run_mock.assert_called_once_with(
+        **{**_RUN_DEFAULT_KWARGS, "fetch_device_info": True}
+    )
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
         ["", "--mqtt-host", "localhost"],
     ), unittest.mock.patch.dict("os.environ", {"FETCH_DEVICE_INFO": "21"}):
         switchbot_mqtt._cli._main()
-    run_mock.assert_called_once_with(fetch_device_info=True, **default_kwargs)
+    run_mock.assert_called_once_with(
+        **{**_RUN_DEFAULT_KWARGS, "fetch_device_info": True}
+    )
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
         ["", "--mqtt-host", "localhost"],
     ), unittest.mock.patch.dict("os.environ", {"FETCH_DEVICE_INFO": ""}):
         switchbot_mqtt._cli._main()
-    run_mock.assert_called_once_with(fetch_device_info=False, **default_kwargs)
+    run_mock.assert_called_once_with(
+        **{**_RUN_DEFAULT_KWARGS, "fetch_device_info": False}
+    )
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
         ["", "--mqtt-host", "localhost"],
     ), unittest.mock.patch.dict("os.environ", {"FETCH_DEVICE_INFO": " "}):
         switchbot_mqtt._cli._main()
-    run_mock.assert_called_once_with(fetch_device_info=True, **default_kwargs)
+    run_mock.assert_called_once_with(
+        **{**_RUN_DEFAULT_KWARGS, "fetch_device_info": True}
+    )
 
 
 @pytest.mark.parametrize(

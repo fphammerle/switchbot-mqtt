@@ -52,9 +52,7 @@ class _MQTTCallbackUserdata:
     retry_count: int
     device_passwords: typing.Dict[str, str]
     fetch_device_info: bool
-    # "homeassistant/" for historic reasons.
-    # will be parametrized via command-line argument in the future.
-    mqtt_topic_prefix: str = "homeassistant/"
+    mqtt_topic_prefix: str
 
 
 class _MQTTControlledActor(abc.ABC):

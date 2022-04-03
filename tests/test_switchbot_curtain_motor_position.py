@@ -33,19 +33,19 @@ from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
     ("topic", "payload", "expected_mac_address", "expected_position_percent"),
     [
         (
-            b"homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
+            b"home/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
             b"42",
             "aa:bb:cc:dd:ee:ff",
             42,
         ),
         (
-            b"homeassistant/cover/switchbot-curtain/11:22:33:44:55:66/position/set-percent",
+            b"home/cover/switchbot-curtain/11:22:33:44:55:66/position/set-percent",
             b"0",
             "11:22:33:44:55:66",
             0,
         ),
         (
-            b"homeassistant/cover/switchbot-curtain/11:22:33:44:55:66/position/set-percent",
+            b"home/cover/switchbot-curtain/11:22:33:44:55:66/position/set-percent",
             b"100",
             "11:22:33:44:55:66",
             100,
@@ -65,6 +65,7 @@ def test__mqtt_set_position_callback(
         retry_count=retry_count,
         device_passwords={},
         fetch_device_info=False,
+        mqtt_topic_prefix="home/",
     )
     message = MQTTMessage(topic=topic)
     message.payload = payload
@@ -85,7 +86,7 @@ def test__mqtt_set_position_callback(
         (
             "switchbot_mqtt._actors",
             logging.DEBUG,
-            f"received topic=homeassistant/cover/switchbot-curtain/{expected_mac_address}"
+            f"received topic=home/cover/switchbot-curtain/{expected_mac_address}"
             f"/position/set-percent payload=b'{expected_position_percent}'",
         ),
         (
@@ -104,6 +105,7 @@ def test__mqtt_set_position_callback_ignore_retained(
         retry_count=3,
         device_passwords={},
         fetch_device_info=False,
+        mqtt_topic_prefix="whatever",
     )
     message = MQTTMessage(
         topic=b"homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent"
@@ -161,9 +163,10 @@ def test__mqtt_set_position_callback_invalid_mac_address(
         retry_count=3,
         device_passwords={},
         fetch_device_info=False,
+        mqtt_topic_prefix="tnatsissaemoh/",
     )
     message = MQTTMessage(
-        topic=b"homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee/position/set-percent"
+        topic=b"tnatsissaemoh/cover/switchbot-curtain/aa:bb:cc:dd:ee/position/set-percent"
     )
     message.payload = b"42"
     with unittest.mock.patch(
@@ -191,6 +194,7 @@ def test__mqtt_set_position_callback_invalid_position(
         retry_count=3,
         device_passwords={},
         fetch_device_info=False,
+        mqtt_topic_prefix="homeassistant/",
     )
     message = MQTTMessage(
         topic=b"homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent"
@@ -220,9 +224,10 @@ def test__mqtt_set_position_callback_command_failed(
         retry_count=3,
         device_passwords={},
         fetch_device_info=False,
+        mqtt_topic_prefix="",
     )
     message = MQTTMessage(
-        topic=b"homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent"
+        topic=b"cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent"
     )
     message.payload = b"21"
     with unittest.mock.patch(

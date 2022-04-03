@@ -56,9 +56,10 @@ def test__run(
         switchbot_mqtt._run(
             mqtt_host=mqtt_host,
             mqtt_port=mqtt_port,
+            mqtt_disable_tls=False,
             mqtt_username=None,
             mqtt_password=None,
-            mqtt_disable_tls=False,
+            mqtt_topic_prefix="homeassistant/",
             retry_count=retry_count,
             device_passwords=device_passwords,
             fetch_device_info=fetch_device_info,
@@ -71,6 +72,7 @@ def test__run(
         retry_count=retry_count,
         device_passwords=device_passwords,
         fetch_device_info=fetch_device_info,
+        mqtt_topic_prefix="homeassistant/",
     )
     assert not mqtt_client_mock().username_pw_set.called
     mqtt_client_mock().tls_set.assert_called_once_with(ca_certs=None)
@@ -137,9 +139,10 @@ def test__run_tls(
         switchbot_mqtt._run(
             mqtt_host="mqtt.local",
             mqtt_port=1234,
+            mqtt_disable_tls=mqtt_disable_tls,
             mqtt_username=None,
             mqtt_password=None,
-            mqtt_disable_tls=mqtt_disable_tls,
+            mqtt_topic_prefix="prfx",
             retry_count=21,
             device_passwords={},
             fetch_device_info=True,
@@ -168,16 +171,20 @@ def test__run_authentication(
         switchbot_mqtt._run(
             mqtt_host=mqtt_host,
             mqtt_port=mqtt_port,
+            mqtt_disable_tls=True,
             mqtt_username=mqtt_username,
             mqtt_password=mqtt_password,
-            mqtt_disable_tls=True,
+            mqtt_topic_prefix="prfx",
             retry_count=7,
             device_passwords={},
             fetch_device_info=True,
         )
     mqtt_client_mock.assert_called_once_with(
         userdata=_MQTTCallbackUserdata(
-            retry_count=7, device_passwords={}, fetch_device_info=True
+            retry_count=7,
+            device_passwords={},
+            fetch_device_info=True,
+            mqtt_topic_prefix="prfx",
         )
     )
     mqtt_client_mock().username_pw_set.assert_called_once_with(
@@ -196,9 +203,10 @@ def test__run_authentication_missing_username(
             switchbot_mqtt._run(
                 mqtt_host=mqtt_host,
                 mqtt_port=mqtt_port,
+                mqtt_disable_tls=True,
                 mqtt_username=None,
                 mqtt_password=mqtt_password,
-                mqtt_disable_tls=True,
+                mqtt_topic_prefix="whatever",
                 retry_count=3,
                 device_passwords={},
                 fetch_device_info=True,
@@ -242,7 +250,7 @@ def _mock_actor_class(
     [
         (
             switchbot_mqtt._actors._ButtonAutomator._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS,
-            b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/request-device-info",
+            b"prfx/switch/switchbot/aa:bb:cc:dd:ee:ff/request-device-info",
             "aa:bb:cc:dd:ee:ff",
         ),
     ],
@@ -262,6 +270,7 @@ def test__mqtt_update_device_info_callback(
         retry_count=21,  # tested in test__mqtt_command_callback
         device_passwords={},
         fetch_device_info=True,
+        mqtt_topic_prefix="prfx/",
     )
     with unittest.mock.patch.object(
         ActorMock, "__init__", return_value=None
@@ -277,7 +286,7 @@ def test__mqtt_update_device_info_callback(
         mac_address=expected_mac_address, retry_count=21, password=None
     )
     update_mock.assert_called_once_with(
-        mqtt_client="client_dummy", mqtt_topic_prefix="homeassistant/"
+        mqtt_client="client_dummy", mqtt_topic_prefix="prfx/"
     )
     assert caplog.record_tuples == [
         (
@@ -307,7 +316,10 @@ def test__mqtt_update_device_info_callback_ignore_retained(
         ActorMock._mqtt_update_device_info_callback(
             "client_dummy",
             _MQTTCallbackUserdata(
-                retry_count=21, device_passwords={}, fetch_device_info=True
+                retry_count=21,
+                device_passwords={},
+                fetch_device_info=True,
+                mqtt_topic_prefix="ignored",
             ),
             message,
         )
@@ -499,7 +511,10 @@ def test__mqtt_command_callback_unexpected_topic(
         ActorMock._mqtt_command_callback(
             "client_dummy",
             _MQTTCallbackUserdata(
-                retry_count=3, device_passwords={}, fetch_device_info=True
+                retry_count=3,
+                device_passwords={},
+                fetch_device_info=True,
+                mqtt_topic_prefix="homeassistant/",
             ),
             message,
         )
@@ -526,7 +541,7 @@ def test__mqtt_command_callback_invalid_mac_address(
     ActorMock = _mock_actor_class(
         command_topic_levels=_ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
     )
-    topic = f"homeassistant/switch/switchbot/{mac_address}/set".encode()
+    topic = f"mqttprefix-switch/switchbot/{mac_address}/set".encode()
     message = MQTTMessage(topic=topic)
     message.payload = payload
     with unittest.mock.patch.object(
@@ -539,7 +554,10 @@ def test__mqtt_command_callback_invalid_mac_address(
         ActorMock._mqtt_command_callback(
             "client_dummy",
             _MQTTCallbackUserdata(
-                retry_count=3, device_passwords={}, fetch_device_info=True
+                retry_count=3,
+                device_passwords={},
+                fetch_device_info=True,
+                mqtt_topic_prefix="mqttprefix-",
             ),
             message,
         )
@@ -582,7 +600,10 @@ def test__mqtt_command_callback_ignore_retained(
         ActorMock._mqtt_command_callback(
             "client_dummy",
             _MQTTCallbackUserdata(
-                retry_count=4, device_passwords={}, fetch_device_info=True
+                retry_count=4,
+                device_passwords={},
+                fetch_device_info=True,
+                mqtt_topic_prefix="homeassistant/",
             ),
             message,
         )

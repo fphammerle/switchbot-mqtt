@@ -46,9 +46,10 @@ def _run(
     *,
     mqtt_host: str,
     mqtt_port: int,
+    mqtt_disable_tls: bool,
     mqtt_username: typing.Optional[str],
     mqtt_password: typing.Optional[str],
-    mqtt_disable_tls: bool,
+    mqtt_topic_prefix: str,
     retry_count: int,
     device_passwords: typing.Dict[str, str],
     fetch_device_info: bool,
@@ -59,6 +60,7 @@ def _run(
             retry_count=retry_count,
             device_passwords=device_passwords,
             fetch_device_info=fetch_device_info,
+            mqtt_topic_prefix=mqtt_topic_prefix,
         )
     )
     mqtt_client.on_connect = _mqtt_on_connect
