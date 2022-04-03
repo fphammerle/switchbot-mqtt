@@ -27,7 +27,7 @@ from paho.mqtt.client import MQTT_ERR_QUEUE_SIZE, MQTT_ERR_SUCCESS, MQTTMessage,
 import switchbot_mqtt
 import switchbot_mqtt._actors
 from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
-from switchbot_mqtt._actors._base import _MQTTCallbackUserdata, _MQTTControlledActor
+from switchbot_mqtt._actors.base import _MQTTCallbackUserdata, _MQTTControlledActor
 from switchbot_mqtt._utils import _MQTTTopicLevel, _MQTTTopicPlaceholder
 
 # pylint: disable=protected-access
@@ -116,12 +116,12 @@ def test__run(
     ]
     assert len(caplog.record_tuples) == (7 if fetch_device_info else 5)
     assert (
-        "switchbot_mqtt._actors._base",
+        "switchbot_mqtt._actors.base",
         logging.INFO,
         "subscribing to MQTT topic 'homeassistant/switch/switchbot/+/set'",
     ) in caplog.record_tuples
     assert (
-        "switchbot_mqtt._actors._base",
+        "switchbot_mqtt._actors.base",
         logging.INFO,
         "subscribing to MQTT topic 'homeassistant/cover/switchbot-curtain/+/set'",
     ) in caplog.record_tuples
@@ -281,7 +281,7 @@ def test__mqtt_update_device_info_callback(
     )
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.DEBUG,
             f"received topic={topic.decode()} payload={payload!r}",
         )
@@ -315,11 +315,11 @@ def test__mqtt_update_device_info_callback_ignore_retained(
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.DEBUG,
             "received topic=aa:bb:cc:dd:ee:ff/request payload=b''",
         ),
-        ("switchbot_mqtt._actors._base", logging.INFO, "ignoring retained message"),
+        ("switchbot_mqtt._actors.base", logging.INFO, "ignoring retained message"),
     ]
 
 
@@ -423,7 +423,7 @@ def test__mqtt_command_callback(
     )
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.DEBUG,
             f"received topic={topic.decode()} payload={payload!r}",
         )
@@ -507,12 +507,12 @@ def test__mqtt_command_callback_unexpected_topic(
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.DEBUG,
             f"received topic={topic.decode()} payload={payload!r}",
         ),
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.WARNING,
             f"unexpected topic {topic.decode()}",
         ),
@@ -547,12 +547,12 @@ def test__mqtt_command_callback_invalid_mac_address(
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.DEBUG,
             f"received topic={topic.decode()} payload={payload!r}",
         ),
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.WARNING,
             f"invalid mac address {mac_address}",
         ),
@@ -590,11 +590,11 @@ def test__mqtt_command_callback_ignore_retained(
     execute_command_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.DEBUG,
             f"received topic={topic.decode()} payload={payload!r}",
         ),
-        ("switchbot_mqtt._actors._base", logging.INFO, "ignoring retained message"),
+        ("switchbot_mqtt._actors.base", logging.INFO, "ignoring retained message"),
     ]
 
 
@@ -664,7 +664,7 @@ def test__report_state(
         topic=expected_topic, payload=state, retain=True
     )
     assert caplog.record_tuples[0] == (
-        "switchbot_mqtt._actors._base",
+        "switchbot_mqtt._actors.base",
         logging.DEBUG,
         f"publishing topic={expected_topic} payload={state!r}",
     )
@@ -673,7 +673,7 @@ def test__report_state(
     else:
         assert caplog.record_tuples[1:] == [
             (
-                "switchbot_mqtt._actors._base",
+                "switchbot_mqtt._actors.base",
                 logging.ERROR,
                 f"Failed to publish MQTT message on topic {expected_topic} (rc={return_code})",
             )

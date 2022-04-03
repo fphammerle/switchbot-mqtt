@@ -16,6 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# > Even with __all__ set appropriately, internal interfaces (packages,
+# > modules, classes, functions, attributes or other names) should still be
+# > prefixed with a single leading underscore. An interface is also considered
+# > internal if any containing namespace (package, module or class) is
+# > considered internal.
+# https://peps.python.org/pep-0008/#public-and-internal-interfaces
+
 from __future__ import annotations  # PEP563 (default in python>=3.10)
 
 import abc

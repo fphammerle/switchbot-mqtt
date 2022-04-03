@@ -22,7 +22,7 @@ import typing
 import paho.mqtt.client
 
 from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
-from switchbot_mqtt._actors._base import _MQTTCallbackUserdata
+from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
 
 _LOGGER = logging.getLogger(__name__)
 

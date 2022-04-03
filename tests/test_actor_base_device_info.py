@@ -25,7 +25,7 @@ import bluepy.btle
 import pytest
 
 from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
-from switchbot_mqtt._actors._base import _MQTTControlledActor
+from switchbot_mqtt._actors.base import _MQTTControlledActor
 
 # pylint: disable=protected-access
 

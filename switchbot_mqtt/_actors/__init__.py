@@ -23,7 +23,7 @@ import bluepy.btle
 import paho.mqtt.client
 import switchbot
 
-from switchbot_mqtt._actors._base import _MQTTCallbackUserdata, _MQTTControlledActor
+from switchbot_mqtt._actors.base import _MQTTCallbackUserdata, _MQTTControlledActor
 from switchbot_mqtt._utils import (
     _join_mqtt_topic_levels,
     _MQTTTopicLevel,

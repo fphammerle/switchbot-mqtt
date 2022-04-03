@@ -22,7 +22,7 @@ import paho.mqtt.client
 import pytest
 import switchbot
 
-import switchbot_mqtt._actors._base
+import switchbot_mqtt._actors.base
 
 # pylint: disable=protected-access
 
@@ -30,13 +30,13 @@ import switchbot_mqtt._actors._base
 def test_abstract() -> None:
     with pytest.raises(TypeError, match=r"\babstract class\b"):
         # pylint: disable=abstract-class-instantiated
-        switchbot_mqtt._actors._base._MQTTControlledActor(  # type: ignore
+        switchbot_mqtt._actors.base._MQTTControlledActor(  # type: ignore
             mac_address="dummy", retry_count=21, password=None
         )
 
 
 def test_execute_command_abstract() -> None:
-    class _ActorMock(switchbot_mqtt._actors._base._MQTTControlledActor):
+    class _ActorMock(switchbot_mqtt._actors.base._MQTTControlledActor):
         def __init__(
             self, mac_address: str, retry_count: int, password: typing.Optional[str]
         ) -> None:

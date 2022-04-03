@@ -24,7 +24,7 @@ import pytest
 from paho.mqtt.client import MQTTMessage
 
 from switchbot_mqtt._actors import _CurtainMotor
-from switchbot_mqtt._actors._base import _MQTTCallbackUserdata
+from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
 
 # pylint: disable=protected-access
 
@@ -147,7 +147,7 @@ def test__mqtt_set_position_callback_unexpected_topic(
     device_init_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.WARN,
             "unexpected topic switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set",
         ),
@@ -175,7 +175,7 @@ def test__mqtt_set_position_callback_invalid_mac_address(
     device_init_mock.assert_not_called()
     assert caplog.record_tuples == [
         (
-            "switchbot_mqtt._actors._base",
+            "switchbot_mqtt._actors.base",
             logging.WARN,
             "invalid mac address aa:bb:cc:dd:ee",
         ),
