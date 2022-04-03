@@ -32,14 +32,12 @@ from switchbot_mqtt._utils import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# "homeassistant" for historic reason, may be parametrized in future
-_TOPIC_LEVELS_PREFIX: typing.Tuple[_MQTTTopicLevel] = ("homeassistant",)
-_BUTTON_TOPIC_LEVELS_PREFIX = _TOPIC_LEVELS_PREFIX + (
+_BUTTON_TOPIC_LEVELS_PREFIX = (
     "switch",
     "switchbot",
     _MQTTTopicPlaceholder.MAC_ADDRESS,
 )
-_CURTAIN_TOPIC_LEVELS_PREFIX = _TOPIC_LEVELS_PREFIX + (
+_CURTAIN_TOPIC_LEVELS_PREFIX = (
     "cover",
     "switchbot-curtain",
     _MQTTTopicPlaceholder.MAC_ADDRESS,
@@ -73,9 +71,11 @@ class _ButtonAutomator(_MQTTControlledActor):
 
     def execute_command(
         self,
+        *,
         mqtt_message_payload: bytes,
         mqtt_client: paho.mqtt.client.Client,
         update_device_info: bool,
+        mqtt_topic_prefix: str,
     ) -> None:
         # https://www.home-assistant.io/integrations/switch.mqtt/#payload_on
         if mqtt_message_payload.lower() == b"on":
@@ -84,18 +84,26 @@ class _ButtonAutomator(_MQTTControlledActor):
             else:
                 _LOGGER.info("switchbot %s turned on", self._mac_address)
                 # https://www.home-assistant.io/integrations/switch.mqtt/#state_on
-                self.report_state(mqtt_client=mqtt_client, state=b"ON")
+                self.report_state(
+                    mqtt_client=mqtt_client,
+                    mqtt_topic_prefix=mqtt_topic_prefix,
+                    state=b"ON",
+                )
                 if update_device_info:
-                    self._update_and_report_device_info(mqtt_client)
+                    self._update_and_report_device_info(mqtt_client, mqtt_topic_prefix)
         # https://www.home-assistant.io/integrations/switch.mqtt/#payload_off
         elif mqtt_message_payload.lower() == b"off":
             if not self.__device.turn_off():
                 _LOGGER.error("failed to turn off switchbot %s", self._mac_address)
             else:
                 _LOGGER.info("switchbot %s turned off", self._mac_address)
-                self.report_state(mqtt_client=mqtt_client, state=b"OFF")
+                self.report_state(
+                    mqtt_client=mqtt_client,
+                    mqtt_topic_prefix=mqtt_topic_prefix,
+                    state=b"OFF",
+                )
                 if update_device_info:
-                    self._update_and_report_device_info(mqtt_client)
+                    self._update_and_report_device_info(mqtt_client, mqtt_topic_prefix)
         else:
             _LOGGER.warning(
                 "unexpected payload %r (expected 'ON' or 'OFF')", mqtt_message_payload
@@ -106,7 +114,9 @@ class _CurtainMotor(_MQTTControlledActor):
 
     # https://www.home-assistant.io/integrations/cover.mqtt/
     MQTT_COMMAND_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ("set",)
-    _MQTT_SET_POSITION_TOPIC_LEVELS = tuple(_CURTAIN_TOPIC_LEVELS_PREFIX) + (
+    _MQTT_SET_POSITION_TOPIC_LEVELS: typing.Tuple[
+        _MQTTTopicLevel, ...
+    ] = _CURTAIN_TOPIC_LEVELS_PREFIX + (
         "position",
         "set-percent",
     )
@@ -120,9 +130,11 @@ class _CurtainMotor(_MQTTControlledActor):
     _MQTT_POSITION_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ("position",)
 
     @classmethod
-    def get_mqtt_position_topic(cls, mac_address: str) -> str:
+    def get_mqtt_position_topic(cls, prefix: str, mac_address: str) -> str:
         return _join_mqtt_topic_levels(
-            topic_levels=cls._MQTT_POSITION_TOPIC_LEVELS, mac_address=mac_address
+            topic_prefix=prefix,
+            topic_levels=cls._MQTT_POSITION_TOPIC_LEVELS,
+            mac_address=mac_address,
         )
 
     def __init__(
@@ -143,7 +155,11 @@ class _CurtainMotor(_MQTTControlledActor):
     def _get_device(self) -> switchbot.SwitchbotDevice:
         return self.__device
 
-    def _report_position(self, mqtt_client: paho.mqtt.client.Client) -> None:
+    def _report_position(
+        self,
+        mqtt_client: paho.mqtt.client.Client,
+        mqtt_topic_prefix: str,
+    ) -> None:
         # > position_closed integer (Optional, default: 0)
         # > position_open integer (Optional, default: 100)
         # https://www.home-assistant.io/integrations/cover.mqtt/#position_closed
@@ -152,23 +168,32 @@ class _CurtainMotor(_MQTTControlledActor):
         # SwitchbotCurtain.update() fetches the real position via bluetooth.
         # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L202
         self._mqtt_publish(
+            topic_prefix=mqtt_topic_prefix,
             topic_levels=self._MQTT_POSITION_TOPIC_LEVELS,
             payload=str(int(self.__device.get_position())).encode(),
             mqtt_client=mqtt_client,
         )
 
     def _update_and_report_device_info(  # pylint: disable=arguments-differ; report_position is optional
-        self, mqtt_client: paho.mqtt.client.Client, *, report_position: bool = True
+        self,
+        mqtt_client: paho.mqtt.client.Client,
+        mqtt_topic_prefix: str,
+        *,
+        report_position: bool = True,
     ) -> None:
-        super()._update_and_report_device_info(mqtt_client)
+        super()._update_and_report_device_info(mqtt_client, mqtt_topic_prefix)
         if report_position:
-            self._report_position(mqtt_client=mqtt_client)
+            self._report_position(
+                mqtt_client=mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix
+            )
 
     def execute_command(
         self,
+        *,
         mqtt_message_payload: bytes,
         mqtt_client: paho.mqtt.client.Client,
         update_device_info: bool,
+        mqtt_topic_prefix: str,
     ) -> None:
         # https://www.home-assistant.io/integrations/cover.mqtt/#payload_open
         report_device_info, report_position = False, False
@@ -179,7 +204,11 @@ class _CurtainMotor(_MQTTControlledActor):
                 _LOGGER.info("switchbot curtain %s opening", self._mac_address)
                 # > state_opening string (Optional, default: opening)
                 # https://www.home-assistant.io/integrations/cover.mqtt/#state_opening
-                self.report_state(mqtt_client=mqtt_client, state=b"opening")
+                self.report_state(
+                    mqtt_client=mqtt_client,
+                    mqtt_topic_prefix=mqtt_topic_prefix,
+                    state=b"opening",
+                )
                 report_device_info = update_device_info
         elif mqtt_message_payload.lower() == b"close":
             if not self.__device.close():
@@ -187,7 +216,11 @@ class _CurtainMotor(_MQTTControlledActor):
             else:
                 _LOGGER.info("switchbot curtain %s closing", self._mac_address)
                 # https://www.home-assistant.io/integrations/cover.mqtt/#state_closing
-                self.report_state(mqtt_client=mqtt_client, state=b"closing")
+                self.report_state(
+                    mqtt_client=mqtt_client,
+                    mqtt_topic_prefix=mqtt_topic_prefix,
+                    state=b"closing",
+                )
                 report_device_info = update_device_info
         elif mqtt_message_payload.lower() == b"stop":
             if not self.__device.stop():
@@ -197,7 +230,11 @@ class _CurtainMotor(_MQTTControlledActor):
                 # no "stopped" state mentioned at
                 # https://www.home-assistant.io/integrations/cover.mqtt/#configuration-variables
                 # https://community.home-assistant.io/t/mqtt-how-to-remove-retained-messages/79029/2
-                self.report_state(mqtt_client=mqtt_client, state=b"")
+                self.report_state(
+                    mqtt_client=mqtt_client,
+                    mqtt_topic_prefix=mqtt_topic_prefix,
+                    state=b"",
+                )
                 report_device_info = update_device_info
                 report_position = True
         else:
@@ -207,7 +244,9 @@ class _CurtainMotor(_MQTTControlledActor):
             )
         if report_device_info:
             self._update_and_report_device_info(
-                mqtt_client=mqtt_client, report_position=report_position
+                mqtt_client=mqtt_client,
+                mqtt_topic_prefix=mqtt_topic_prefix,
+                report_position=report_position,
             )
 
     @classmethod
@@ -224,9 +263,9 @@ class _CurtainMotor(_MQTTControlledActor):
             _LOGGER.info("ignoring retained message on topic %s", message.topic)
             return
         actor = cls._init_from_topic(
-            userdata=userdata,
             topic=message.topic,
             expected_topic_levels=cls._MQTT_SET_POSITION_TOPIC_LEVELS,
+            settings=userdata,
         )
         if not actor:
             return  # warning in _init_from_topic

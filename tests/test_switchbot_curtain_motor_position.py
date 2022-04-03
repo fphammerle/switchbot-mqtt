@@ -134,6 +134,7 @@ def test__mqtt_set_position_callback_unexpected_topic(
         retry_count=3,
         device_passwords={},
         fetch_device_info=False,
+        mqtt_topic_prefix="",
     )
     message = MQTTMessage(topic=b"switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set")
     message.payload = b"42"

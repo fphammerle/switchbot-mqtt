@@ -34,7 +34,9 @@ from switchbot_mqtt._actors import _CurtainMotor
 @pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
 def test_get_mqtt_battery_percentage_topic(mac_address: str) -> None:
     assert (
-        _CurtainMotor.get_mqtt_battery_percentage_topic(mac_address=mac_address)
+        _CurtainMotor.get_mqtt_battery_percentage_topic(
+            prefix="homeassistant/", mac_address=mac_address
+        )
         == f"homeassistant/cover/switchbot-curtain/{mac_address}/battery-percentage"
     )
 
@@ -42,8 +44,8 @@ def test_get_mqtt_battery_percentage_topic(mac_address: str) -> None:
 @pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])
 def test_get_mqtt_position_topic(mac_address: str) -> None:
     assert (
-        _CurtainMotor.get_mqtt_position_topic(mac_address=mac_address)
-        == f"homeassistant/cover/switchbot-curtain/{mac_address}/position"
+        _CurtainMotor.get_mqtt_position_topic(prefix="prfx-", mac_address=mac_address)
+        == f"prfx-cover/switchbot-curtain/{mac_address}/position"
     )
 
 
@@ -80,10 +82,10 @@ def test__report_position(
     ) as publish_mock, unittest.mock.patch(
         "switchbot.SwitchbotCurtain.get_position", return_value=position
     ):
-        actor._report_position(mqtt_client="dummy")
+        actor._report_position(mqtt_client="dummy", mqtt_topic_prefix="topic-prefix")
     publish_mock.assert_called_once_with(
+        topic_prefix="topic-prefix",
         topic_levels=(
-            "homeassistant",
             "cover",
             "switchbot-curtain",
             switchbot_mqtt._utils._MQTTTopicPlaceholder.MAC_ADDRESS,
@@ -112,14 +114,16 @@ def test__report_position_invalid(
     ), pytest.raises(
         ValueError
     ):
-        actor._report_position(mqtt_client="dummy")
+        actor._report_position(mqtt_client="dummy", mqtt_topic_prefix="dummy2")
     publish_mock.assert_not_called()
 
 
+@pytest.mark.parametrize("topic_prefix", ["", "homeassistant/"])
 @pytest.mark.parametrize(("battery_percent", "battery_percent_encoded"), [(42, b"42")])
 @pytest.mark.parametrize("report_position", [True, False])
 @pytest.mark.parametrize(("position", "position_encoded"), [(21, b"21")])
 def test__update_and_report_device_info(
+    topic_prefix: str,
     report_position: bool,
     battery_percent: int,
     battery_percent_encoded: bytes,
@@ -134,13 +138,15 @@ def test__update_and_report_device_info(
     mqtt_client_mock = unittest.mock.MagicMock()
     with unittest.mock.patch("switchbot.SwitchbotCurtain.update") as update_mock:
         actor._update_and_report_device_info(
-            mqtt_client=mqtt_client_mock, report_position=report_position
+            mqtt_client=mqtt_client_mock,
+            mqtt_topic_prefix=topic_prefix,
+            report_position=report_position,
         )
     update_mock.assert_called_once_with()
     assert mqtt_client_mock.publish.call_count == (1 + report_position)
     assert (
         unittest.mock.call(
-            topic="homeassistant/cover/switchbot-curtain/dummy/battery-percentage",
+            topic=topic_prefix + "cover/switchbot-curtain/dummy/battery-percentage",
             payload=battery_percent_encoded,
             retain=True,
         )
@@ -149,7 +155,7 @@ def test__update_and_report_device_info(
     if report_position:
         assert (
             unittest.mock.call(
-                topic="homeassistant/cover/switchbot-curtain/dummy/position",
+                topic=topic_prefix + "cover/switchbot-curtain/dummy/position",
                 payload=position_encoded,
                 retain=True,
             )
@@ -170,10 +176,13 @@ def test__update_and_report_device_info_update_error(exception: Exception) -> No
     with unittest.mock.patch.object(
         actor._get_device(), "update", side_effect=exception
     ), pytest.raises(type(exception)):
-        actor._update_and_report_device_info(mqtt_client_mock, report_position=True)
+        actor._update_and_report_device_info(
+            mqtt_client_mock, mqtt_topic_prefix="dummy", report_position=True
+        )
     mqtt_client_mock.publish.assert_not_called()
 
 
+@pytest.mark.parametrize("topic_prefix", ["topic-prfx"])
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
 @pytest.mark.parametrize("password", ["pa$$word", None])
 @pytest.mark.parametrize("retry_count", (2, 3))
@@ -195,6 +204,7 @@ def test__update_and_report_device_info_update_error(exception: Exception) -> No
 @pytest.mark.parametrize("command_successful", [True, False])
 def test_execute_command(
     caplog: _pytest.logging.LogCaptureFixture,
+    topic_prefix: str,
     mac_address: str,
     password: typing.Optional[str],
     retry_count: int,
@@ -220,6 +230,7 @@ def test_execute_command(
                 mqtt_client="dummy",
                 mqtt_message_payload=message_payload,
                 update_device_info=update_device_info,
+                mqtt_topic_prefix=topic_prefix,
             )
     device_init_mock.assert_called_once_with(
         mac=mac_address, password=password, retry_count=retry_count, reverse_mode=True
@@ -238,6 +249,7 @@ def test_execute_command(
         ]
         report_mock.assert_called_once_with(
             mqtt_client="dummy",
+            mqtt_topic_prefix=topic_prefix,
             # https://www.home-assistant.io/integrations/cover.mqtt/#state_opening
             state={b"open": b"opening", b"close": b"closing", b"stop": b""}[
                 message_payload.lower()
@@ -256,6 +268,7 @@ def test_execute_command(
         update_device_info_mock.assert_called_once_with(
             mqtt_client="dummy",
             report_position=(action_name == "switchbot.SwitchbotCurtain.stop"),
+            mqtt_topic_prefix=topic_prefix,
         )
     else:
         update_device_info_mock.assert_not_called()
@@ -279,6 +292,7 @@ def test_execute_command_invalid_payload(
                 mqtt_client="dummy",
                 mqtt_message_payload=message_payload,
                 update_device_info=True,
+                mqtt_topic_prefix="dummy",
             )
     device_mock.assert_called_once_with(
         mac=mac_address, password=password, retry_count=7, reverse_mode=True
@@ -317,6 +331,7 @@ def test_execute_command_bluetooth_error(
             mqtt_client="dummy",
             mqtt_message_payload=message_payload,
             update_device_info=True,
+            mqtt_topic_prefix="dummy",
         )
     assert len(caplog.records) == 2
     assert caplog.records[0].name == "switchbot"

@@ -37,19 +37,27 @@ _MQTTTopicLevel = typing.Union[str, _MQTTTopicPlaceholder]
 
 
 def _join_mqtt_topic_levels(
-    topic_levels: typing.Iterable[_MQTTTopicLevel], mac_address: str
+    *,
+    topic_prefix: str,
+    topic_levels: typing.Iterable[_MQTTTopicLevel],
+    mac_address: str,
 ) -> str:
-    return "/".join(
+    return topic_prefix + "/".join(
         mac_address if l == _MQTTTopicPlaceholder.MAC_ADDRESS else typing.cast(str, l)
         for l in topic_levels
     )
 
 
 def _parse_mqtt_topic(
-    topic: str, expected_levels: typing.Collection[_MQTTTopicLevel]
+    *,
+    topic: str,
+    expected_prefix: str,
+    expected_levels: typing.Collection[_MQTTTopicLevel],
 ) -> typing.Dict[_MQTTTopicPlaceholder, str]:
+    if not topic.startswith(expected_prefix):
+        raise ValueError(f"expected topic prefix {expected_prefix}, got topic {topic}")
     attrs: typing.Dict[_MQTTTopicPlaceholder, str] = {}
-    topic_split = topic.split("/")
+    topic_split = topic[len(expected_prefix) :].split("/")
     if len(topic_split) != len(expected_levels):
         raise ValueError(f"unexpected topic {topic}")
     for given_part, expected_part in zip(topic_split, expected_levels):

@@ -46,14 +46,18 @@ def test_execute_command_abstract() -> None:
 
         def execute_command(
             self,
+            *,
             mqtt_message_payload: bytes,
             mqtt_client: paho.mqtt.client.Client,
             update_device_info: bool,
+            mqtt_topic_prefix: str,
         ) -> None:
+            assert 21
             super().execute_command(
                 mqtt_message_payload=mqtt_message_payload,
                 mqtt_client=mqtt_client,
                 update_device_info=update_device_info,
+                mqtt_topic_prefix=mqtt_topic_prefix,
             )
 
         def _get_device(self) -> switchbot.SwitchbotDevice:
@@ -63,7 +67,10 @@ def test_execute_command_abstract() -> None:
     actor = _ActorMock(mac_address="aa:bb:cc:dd:ee:ff", retry_count=42, password=None)
     with pytest.raises(NotImplementedError):
         actor.execute_command(
-            mqtt_message_payload=b"dummy", mqtt_client="dummy", update_device_info=True
+            mqtt_message_payload=b"dummy",
+            mqtt_client="dummy",
+            update_device_info=True,
+            mqtt_topic_prefix="whatever",
         )
     with pytest.raises(NotImplementedError):
         actor._get_device()

@@ -223,9 +223,11 @@ def _mock_actor_class(
 
         def execute_command(
             self,
+            *,
             mqtt_message_payload: bytes,
             mqtt_client: Client,
             update_device_info: bool,
+            mqtt_topic_prefix: str,
         ) -> None:
             pass
 
@@ -274,7 +276,9 @@ def test__mqtt_update_device_info_callback(
     init_mock.assert_called_once_with(
         mac_address=expected_mac_address, retry_count=21, password=None
     )
-    update_mock.assert_called_once_with("client_dummy")
+    update_mock.assert_called_once_with(
+        mqtt_client="client_dummy", mqtt_topic_prefix="homeassistant/"
+    )
     assert caplog.record_tuples == [
         (
             "switchbot_mqtt._actors._base",
@@ -320,45 +324,58 @@ def test__mqtt_update_device_info_callback_ignore_retained(
 
 
 @pytest.mark.parametrize(
-    ("command_topic_levels", "topic", "payload", "expected_mac_address"),
+    (
+        "topic_prefix",
+        "command_topic_levels",
+        "topic",
+        "payload",
+        "expected_mac_address",
+    ),
     [
         (
+            "homeassistant/",
             _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set",
             b"ON",
             "aa:bb:cc:dd:ee:ff",
         ),
         (
+            "homeassistant/",
             _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set",
             b"OFF",
             "aa:bb:cc:dd:ee:ff",
         ),
         (
+            "homeassistant/",
             _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set",
             b"on",
             "aa:bb:cc:dd:ee:ff",
         ),
         (
+            "homeassistant/",
             _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set",
             b"off",
             "aa:bb:cc:dd:ee:ff",
         ),
         (
+            "prefix-",
             _ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS,
-            b"homeassistant/switch/switchbot/aa:01:23:45:67:89/set",
+            b"prefix-switch/switchbot/aa:01:23:45:67:89/set",
             b"ON",
             "aa:01:23:45:67:89",
         ),
         (
+            "",
             ["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS],
             b"switchbot/aa:01:23:45:67:89",
             b"ON",
             "aa:01:23:45:67:89",
         ),
         (
+            "homeassistant/",
             _CurtainMotor.MQTT_COMMAND_TOPIC_LEVELS,
             b"homeassistant/cover/switchbot-curtain/aa:01:23:45:67:89/set",
             b"OPEN",
@@ -370,6 +387,7 @@ def test__mqtt_update_device_info_callback_ignore_retained(
 @pytest.mark.parametrize("fetch_device_info", [True, False])
 def test__mqtt_command_callback(
     caplog: _pytest.logging.LogCaptureFixture,
+    topic_prefix: str,
     command_topic_levels: typing.Tuple[_MQTTTopicLevel, ...],
     topic: bytes,
     payload: bytes,
@@ -384,6 +402,7 @@ def test__mqtt_command_callback(
         retry_count=retry_count,
         device_passwords={},
         fetch_device_info=fetch_device_info,
+        mqtt_topic_prefix=topic_prefix,
     )
     with unittest.mock.patch.object(
         ActorMock, "__init__", return_value=None
@@ -400,6 +419,7 @@ def test__mqtt_command_callback(
         mqtt_client="client_dummy",
         mqtt_message_payload=payload,
         update_device_info=fetch_device_info,
+        mqtt_topic_prefix=topic_prefix,
     )
     assert caplog.record_tuples == [
         (
@@ -424,7 +444,7 @@ def test__mqtt_command_callback_password(
     ActorMock = _mock_actor_class(
         command_topic_levels=("switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS)
     )
-    message = MQTTMessage(topic=b"switchbot/" + mac_address.encode())
+    message = MQTTMessage(topic=b"prefix-switchbot/" + mac_address.encode())
     message.payload = b"whatever"
     callback_userdata = _MQTTCallbackUserdata(
         retry_count=3,
@@ -434,6 +454,7 @@ def test__mqtt_command_callback_password(
             "11:22:33:dd:ee:ff": "äöü",
         },
         fetch_device_info=True,
+        mqtt_topic_prefix="prefix-",
     )
     with unittest.mock.patch.object(
         ActorMock, "__init__", return_value=None
@@ -448,6 +469,7 @@ def test__mqtt_command_callback_password(
         mqtt_client="client_dummy",
         mqtt_message_payload=b"whatever",
         update_device_info=True,
+        mqtt_topic_prefix="prefix-",
     )
 
 
@@ -577,15 +599,17 @@ def test__mqtt_command_callback_ignore_retained(
 
 
 @pytest.mark.parametrize(
-    ("state_topic_levels", "mac_address", "expected_topic"),
+    ("topic_prefix", "state_topic_levels", "mac_address", "expected_topic"),
     # https://www.home-assistant.io/docs/mqtt/discovery/#switches
     [
         (
+            "homeassistant/",
             _ButtonAutomator.MQTT_STATE_TOPIC_LEVELS,
             "aa:bb:cc:dd:ee:ff",
             "homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/state",
         ),
         (
+            "",
             ["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS, "state"],
             "aa:bb:cc:dd:ee:gg",
             "switchbot/aa:bb:cc:dd:ee:gg/state",
@@ -596,6 +620,7 @@ def test__mqtt_command_callback_ignore_retained(
 @pytest.mark.parametrize("return_code", [MQTT_ERR_SUCCESS, MQTT_ERR_QUEUE_SIZE])
 def test__report_state(
     caplog: _pytest.logging.LogCaptureFixture,
+    topic_prefix: str,
     state_topic_levels: typing.Tuple[_MQTTTopicLevel, ...],
     mac_address: str,
     expected_topic: str,
@@ -615,9 +640,11 @@ def test__report_state(
 
         def execute_command(
             self,
+            *,
             mqtt_message_payload: bytes,
             mqtt_client: Client,
             update_device_info: bool,
+            mqtt_topic_prefix: str,
         ) -> None:
             pass
 
@@ -628,7 +655,11 @@ def test__report_state(
     mqtt_client_mock.publish.return_value.rc = return_code
     with caplog.at_level(logging.DEBUG):
         actor = _ActorMock(mac_address=mac_address, retry_count=3, password=None)
-        actor.report_state(state=state, mqtt_client=mqtt_client_mock)
+        actor.report_state(
+            state=state,
+            mqtt_client=mqtt_client_mock,
+            mqtt_topic_prefix=topic_prefix,
+        )
     mqtt_client_mock.publish.assert_called_once_with(
         topic=expected_topic, payload=state, retain=True
     )

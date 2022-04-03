@@ -26,6 +26,7 @@ import warnings
 import switchbot
 
 import switchbot_mqtt
+import switchbot_mqtt._actors._base  # rename {_->}base ?
 from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
 
 _MQTT_DEFAULT_PORT = 1883
@@ -80,22 +81,37 @@ def _main() -> None:
         help="Maximum number of attempts to send a command to a SwitchBot device"
         " (default: %(default)d)",
     )
+    _MQTTCallbackUserdata = (
+        switchbot_mqtt._actors._base._MQTTCallbackUserdata  # pylint: disable=protected-access; internal module & class
+    )
+    mqtt_topic_prefix = _MQTTCallbackUserdata.mqtt_topic_prefix
     argparser.add_argument(
         "--fetch-device-info",
         action="store_true",
-        help="Report devices' battery level on topic"
+        help="Report devices' battery level on topic "
         # pylint: disable=protected-access; internal
-        f" {_ButtonAutomator.get_mqtt_battery_percentage_topic(mac_address='MAC_ADDRESS')}"
-        " or, respectively,"
-        f" {_CurtainMotor.get_mqtt_battery_percentage_topic(mac_address='MAC_ADDRESS')}"
-        " after every command. Additionally report curtain motors' position on"
-        f" topic {_CurtainMotor.get_mqtt_position_topic(mac_address='MAC_ADDRESS')}"
-        " after executing stop commands."
+        + _ButtonAutomator.get_mqtt_battery_percentage_topic(
+            prefix=mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+        )
+        + " or, respectively,"
+        + _CurtainMotor.get_mqtt_battery_percentage_topic(
+            prefix=mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+        )
+        + " after every command. Additionally report curtain motors' position on topic "
+        + _CurtainMotor.get_mqtt_position_topic(
+            prefix=mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+        )
+        + " after executing stop commands."
         " When this option is enabled, the mentioned reports may also be requested"
-        " by sending a MQTT message to the topic"
-        f" {_ButtonAutomator.get_mqtt_update_device_info_topic(mac_address='MAC_ADDRESS')}"
-        f" or {_CurtainMotor.get_mqtt_update_device_info_topic(mac_address='MAC_ADDRESS')}."
-        " This option can also be enabled by assigning a non-empty value to the"
+        " by sending a MQTT message to the topic "
+        + _ButtonAutomator.get_mqtt_update_device_info_topic(
+            prefix=mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+        )
+        + " or "
+        + _CurtainMotor.get_mqtt_update_device_info_topic(
+            prefix=mqtt_topic_prefix, mac_address="MAC_ADDRESS"
+        )
+        + ". This option can also be enabled by assigning a non-empty value to the"
         " environment variable FETCH_DEVICE_INFO.",
     )
     argparser.add_argument("--debug", action="store_true")

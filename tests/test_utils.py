@@ -44,60 +44,100 @@ def test__mac_address_valid(mac_address: str, valid: bool) -> None:
 
 
 @pytest.mark.parametrize(
-    ("expected_levels", "topic", "expected_attrs"),
+    ("expected_prefix", "expected_levels", "topic", "expected_attrs"),
     [
         (
+            "",
             ["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS, "set"],
             "switchbot/aa:bb:cc:dd:ee:ff/set",
             {_MQTTTopicPlaceholder.MAC_ADDRESS: "aa:bb:cc:dd:ee:ff"},
         ),
         (
+            "",
             ["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS, "set"],
             "switchbot//set",
             {_MQTTTopicPlaceholder.MAC_ADDRESS: ""},
         ),
         (
+            "",
             ["prefix", _MQTTTopicPlaceholder.MAC_ADDRESS],
-            "prefix/aa:bb:cc:dd:ee:ff",
-            {_MQTTTopicPlaceholder.MAC_ADDRESS: "aa:bb:cc:dd:ee:ff"},
+            "prefix/aa:bb:cc:dd:ee:f1",
+            {_MQTTTopicPlaceholder.MAC_ADDRESS: "aa:bb:cc:dd:ee:f1"},
         ),
         (
+            "",
             [_MQTTTopicPlaceholder.MAC_ADDRESS],
             "00:11:22:33:44:55",
             {_MQTTTopicPlaceholder.MAC_ADDRESS: "00:11:22:33:44:55"},
         ),
+        (
+            "prefix/",
+            [_MQTTTopicPlaceholder.MAC_ADDRESS],
+            "prefix/aa:bb:cc:dd:ee:f2",
+            {_MQTTTopicPlaceholder.MAC_ADDRESS: "aa:bb:cc:dd:ee:f2"},
+        ),
+        (
+            "prefix-",
+            ["test", _MQTTTopicPlaceholder.MAC_ADDRESS, "42"],
+            "prefix-test/aa:bb:cc:dd:ee:f3/42",
+            {_MQTTTopicPlaceholder.MAC_ADDRESS: "aa:bb:cc:dd:ee:f3"},
+        ),
     ],
 )
 def test__parse_mqtt_topic(
+    expected_prefix: str,
     expected_levels: typing.List[_MQTTTopicLevel],
     topic: str,
     expected_attrs: typing.Dict[_MQTTTopicPlaceholder, str],
 ) -> None:
     assert (
-        _parse_mqtt_topic(topic=topic, expected_levels=expected_levels)
+        _parse_mqtt_topic(
+            topic=topic,
+            expected_prefix=expected_prefix,
+            expected_levels=expected_levels,
+        )
         == expected_attrs
     )
 
 
+def test__parse_mqtt_topic_unexpected_prefix() -> None:
+    with pytest.raises(
+        ValueError,
+        match=r"^expected topic prefix abcdefg/, got topic abcdef/aa:bb:cc:dd:ee:ff$",
+    ):
+        _parse_mqtt_topic(
+            topic="abcdef/aa:bb:cc:dd:ee:ff",
+            expected_prefix="abcdefg/",
+            expected_levels=[_MQTTTopicPlaceholder.MAC_ADDRESS],
+        )
+
+
 @pytest.mark.parametrize(
-    ("expected_levels", "topic"),
+    ("expected_prefix", "expected_levels", "topic"),
     [
         (
+            "",
             ["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS, "set"],
             "switchbot/aa:bb:cc:dd:ee:ff",
         ),
         (
+            "",
             ["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS, "set"],
             "switchbot/aa:bb:cc:dd:ee:ff/change",
         ),
         (
+            "prfx",
             ["switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS, "set"],
-            "switchbot/aa:bb:cc:dd:ee:ff/set/suffix",
+            "prfx/switchbot/aa:bb:cc:dd:ee:ff/set/suffix",
         ),
     ],
 )
 def test__parse_mqtt_topic_fail(
-    expected_levels: typing.List[_MQTTTopicLevel], topic: str
+    expected_prefix: str, expected_levels: typing.List[_MQTTTopicLevel], topic: str
 ) -> None:
     with pytest.raises(ValueError):
-        _parse_mqtt_topic(topic=topic, expected_levels=expected_levels)
+        _parse_mqtt_topic(
+            topic=topic,
+            expected_prefix=expected_prefix,
+            expected_levels=expected_levels,
+        )
