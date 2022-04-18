@@ -94,6 +94,17 @@ switchbot-mqtt --mqtt-username me --mqtt-password-file /var/lib/secrets/mqtt/pas
 ⚠️  `--mqtt-password` leaks the password to other users on the same machine,
 if `/proc` is mounted with `hidepid=0` (default).
 
+### MQTT Topic
+
+By default, `switchbot-mqtt` prepends `homeassistant/` to all MQTT topics.
+This common prefix can be changed via `--mqtt-topic-prefix`:
+```sh
+# listens on living-room/switch/switchbot/aa:bb:cc:dd:ee:ff/set
+switchbot-mqtt --mqtt-topic-prefix living-room/ …
+# listens on switch/switchbot/aa:bb:cc:dd:ee:ff/set
+switchbot-mqtt --mqtt-topic-prefix '' …
+```
+
 ## Home Assistant 🏡
 
 ### Rationale

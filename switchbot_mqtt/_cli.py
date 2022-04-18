@@ -30,7 +30,6 @@ from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
 
 _MQTT_DEFAULT_PORT = 1883
 _MQTT_DEFAULT_TLS_PORT = 8883
-_MQTT_TOPIC_PREFIX = "homeassistant/"  # for historic reasons
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,14 +62,20 @@ def _main() -> None:
         type=pathlib.Path,
         metavar="PATH",
         dest="mqtt_password_path",
-        help="stripping trailing newline",
+        help="Stripping trailing newline",
+    )
+    argparser.add_argument(
+        "--mqtt-topic-prefix",
+        metavar="PREFIX",
+        default="homeassistant/",  # for historic reasons (change to empty string?)
+        help="Default: %(default)s",
     )
     argparser.add_argument(
         "--device-password-file",
         type=pathlib.Path,
         metavar="PATH",
         dest="device_password_path",
-        help="path to json file mapping mac addresses of switchbot devices to passwords, e.g. "
+        help="Path to json file mapping mac addresses of switchbot devices to passwords, e.g. "
         + json.dumps({"11:22:33:44:55:66": "password", "aa:bb:cc:dd:ee:ff": "secret"}),
     )
     argparser.add_argument(
@@ -86,28 +91,29 @@ def _main() -> None:
         action="store_true",
         help="Report devices' battery level on topic "
         + _ButtonAutomator.get_mqtt_battery_percentage_topic(
-            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
+            prefix="[PREFIX]", mac_address="MAC_ADDRESS"
         )
-        + " or, respectively,"
+        + " or, respectively, "
         + _CurtainMotor.get_mqtt_battery_percentage_topic(
-            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
+            prefix="[PREFIX]", mac_address="MAC_ADDRESS"
         )
         + " after every command. Additionally report curtain motors' position on topic "
         + _CurtainMotor.get_mqtt_position_topic(
-            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
+            prefix="[PREFIX]", mac_address="MAC_ADDRESS"
         )
         + " after executing stop commands."
         " When this option is enabled, the mentioned reports may also be requested"
         " by sending a MQTT message to the topic "
         + _ButtonAutomator.get_mqtt_update_device_info_topic(
-            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
+            prefix="[PREFIX]", mac_address="MAC_ADDRESS"
         )
         + " or "
         + _CurtainMotor.get_mqtt_update_device_info_topic(
-            prefix=_MQTT_TOPIC_PREFIX, mac_address="MAC_ADDRESS"
+            prefix="[PREFIX]", mac_address="MAC_ADDRESS"
         )
         + ". This option can also be enabled by assigning a non-empty value to the"
-        " environment variable FETCH_DEVICE_INFO.",
+        " environment variable FETCH_DEVICE_INFO."
+        " [PREFIX] can be set via --mqtt-topic-prefix.",
     )
     argparser.add_argument("--debug", action="store_true")
     args = argparser.parse_args()
@@ -152,7 +158,7 @@ def _main() -> None:
         mqtt_disable_tls=not args.mqtt_enable_tls,
         mqtt_username=args.mqtt_username,
         mqtt_password=mqtt_password,
-        mqtt_topic_prefix=_MQTT_TOPIC_PREFIX,
+        mqtt_topic_prefix=args.mqtt_topic_prefix,
         retry_count=args.retry_count,
         device_passwords=device_passwords,
         fetch_device_info=args.fetch_device_info

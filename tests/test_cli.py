@@ -298,6 +298,22 @@ def test__main_mqtt_tls_collision(capsys: _pytest.capture.CaptureFixture) -> Non
     )
 
 
+@pytest.mark.parametrize(
+    ("additional_argv", "expected_topic_prefix"),
+    [([], "homeassistant/"), (["--mqtt-topic-prefix", ""], "")],
+)
+def test__main_mqtt_topic_prefix(
+    additional_argv: typing.List[str], expected_topic_prefix: str
+) -> None:
+    with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
+        "sys.argv", ["", "--mqtt-host", "localhost"] + additional_argv
+    ):
+        switchbot_mqtt._cli._main()
+    run_mock.assert_called_once_with(
+        **{**_RUN_DEFAULT_KWARGS, "mqtt_topic_prefix": expected_topic_prefix}
+    )
+
+
 def test__main_fetch_device_info() -> None:
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv",
