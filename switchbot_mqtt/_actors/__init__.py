@@ -157,7 +157,7 @@ class _CurtainMotor(_MQTTControlledActor):
 
     def _report_position(
         self,
-        mqtt_client: paho.mqtt.client.Client,
+        mqtt_client: paho.mqtt.client.Client,  # pylint: disable=duplicate-code; similar param list
         mqtt_topic_prefix: str,
     ) -> None:
         # > position_closed integer (Optional, default: 0)
@@ -287,6 +287,7 @@ class _CurtainMotor(_MQTTControlledActor):
 
     @classmethod
     def _get_mqtt_message_callbacks(
+        # pylint: disable=duplicate-code; param list in parent class
         cls,
         *,
         enable_device_info_update_topic: bool,

@@ -16,6 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# pylint: disable=protected-access
+# pylint: disable=too-many-arguments; these are tests, no API
+# pylint: disable=duplicate-code; similarities with tests for curtain motor
+
 import logging
 import typing
 import unittest.mock
@@ -25,9 +29,6 @@ import bluepy.btle
 import pytest
 
 from switchbot_mqtt._actors import _ButtonAutomator
-
-# pylint: disable=protected-access
-# pylint: disable=too-many-arguments; these are tests, no API
 
 
 @pytest.mark.parametrize("prefix", ["homeassistant/", "prefix-", ""])

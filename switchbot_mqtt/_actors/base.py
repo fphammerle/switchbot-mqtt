@@ -178,6 +178,7 @@ class _MQTTControlledActor(abc.ABC):
 
     @classmethod
     def _mqtt_update_device_info_callback(
+        # pylint: disable=duplicate-code; other callbacks with same params
         cls,
         mqtt_client: paho.mqtt.client.Client,
         userdata: _MQTTCallbackUserdata,
@@ -201,7 +202,7 @@ class _MQTTControlledActor(abc.ABC):
             )
 
     @abc.abstractmethod
-    def execute_command(
+    def execute_command(  # pylint: disable=duplicate-code; implementations
         self,
         *,
         mqtt_message_payload: bytes,
@@ -213,6 +214,7 @@ class _MQTTControlledActor(abc.ABC):
 
     @classmethod
     def _mqtt_command_callback(
+        # pylint: disable=duplicate-code; other callbacks with same params
         cls,
         mqtt_client: paho.mqtt.client.Client,
         userdata: _MQTTCallbackUserdata,

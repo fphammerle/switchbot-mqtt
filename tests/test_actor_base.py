@@ -37,6 +37,7 @@ def test_abstract() -> None:
 
 def test_execute_command_abstract() -> None:
     class _ActorMock(switchbot_mqtt._actors.base._MQTTControlledActor):
+        # pylint: disable=duplicate-code
         def __init__(
             self, mac_address: str, retry_count: int, password: typing.Optional[str]
         ) -> None:
