@@ -24,10 +24,11 @@ import logging
 import typing
 import unittest.mock
 
-import _pytest.logging
+import _pytest.logging  # pylint: disable=import-private-name; typing
 import bluepy.btle
 import pytest
 
+# pylint: disable=import-private-name; internal
 from switchbot_mqtt._actors import _ButtonAutomator
 
 

@@ -20,10 +20,11 @@ import logging
 import typing
 import unittest.mock
 
-import _pytest.logging
+import _pytest.logging  # pylint: disable=import-private-name; typing
 import pytest
 from paho.mqtt.client import MQTT_ERR_QUEUE_SIZE, MQTT_ERR_SUCCESS, MQTTMessage, Client
 
+# pylint: disable=import-private-name; internal
 import switchbot_mqtt
 import switchbot_mqtt._actors
 from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor

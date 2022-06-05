@@ -20,6 +20,7 @@ import typing
 
 import pytest
 
+# pylint: disable=import-private-name; internal
 from switchbot_mqtt._utils import (
     _mac_address_valid,
     _MQTTTopicLevel,

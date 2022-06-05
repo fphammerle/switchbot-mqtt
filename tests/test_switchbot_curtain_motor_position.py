@@ -19,10 +19,11 @@
 import logging
 import unittest.mock
 
-import _pytest.logging
+import _pytest.logging  # pylint: disable=import-private-name; typing
 import pytest
 from paho.mqtt.client import MQTTMessage
 
+# pylint: disable=import-private-name; internal
 from switchbot_mqtt._actors import _CurtainMotor
 from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
 

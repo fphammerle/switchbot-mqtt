@@ -23,7 +23,7 @@ import subprocess
 import typing
 import unittest.mock
 
-import _pytest.capture
+import _pytest.capture  # pylint: disable=import-private-name; typing
 import pytest
 
 import switchbot_mqtt

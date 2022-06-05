@@ -148,7 +148,9 @@ def _main() -> None:
             mqtt_password = mqtt_password[:-1]
     else:
         mqtt_password = args.mqtt_password
-    if args.device_password_path:
+    if (  # pylint: disable=consider-ternary-expression; bulky with black's wraps
+        args.device_password_path
+    ):
         device_passwords = json.loads(args.device_password_path.read_text())
     else:
         device_passwords = {}
