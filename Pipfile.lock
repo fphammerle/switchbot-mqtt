@@ -307,11 +307,11 @@
         },
         "pylint": {
             "hashes": [
-                "sha256:10d291ea5133645f73fc1b51ca137ad6531223c1461a5632a1db029a9bc033b5",
-                "sha256:ef64ce5d4c17b8906caeaf2c2914ef3036a3a1b7f4a86f5fbf6caff9067c5f63"
+                "sha256:549261e0762c3466cc001024c4419c08252cb8c8d40f5c2c6966fea690e7fe2a",
+                "sha256:bb71e6d169506de585edea997e48d9ff20c0dc0e2fbc1d166bad6b640120326b"
             ],
             "index": "pypi",
-            "version": "==2.14.0"
+            "version": "==2.14.1"
         },
         "pylint-import-requirements": {
             "hashes": [
@@ -347,11 +347,11 @@
         },
         "setuptools": {
             "hashes": [
-                "sha256:d1746e7fd520e83bbe210d02fff1aa1a425ad671c7a9da7d246ec2401a087198",
-                "sha256:e7d11f3db616cda0751372244c2ba798e8e56a28e096ec4529010b803485f3fe"
+                "sha256:1f5d3a1502812025cdb2e5609b6af2d207332e3f50febe6db10ed3a59b2f155f",
+                "sha256:30b6b0fbacc459c90d27a63e6173facfc8b8c99a48fb24b5044f459ba63cd6cf"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==62.3.3"
+            "version": "==62.3.4"
         },
         "tomli": {
             "hashes": [
