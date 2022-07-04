@@ -17,6 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
+import socket
 import typing
 import unittest.mock
 
@@ -35,9 +36,23 @@ from switchbot_mqtt._utils import _MQTTTopicLevel, _MQTTTopicPlaceholder
 # pylint: disable=too-many-arguments; these are tests, no API
 
 
-def test__mqtt_on_connect(caplog: _pytest.logging.LogCaptureFixture) -> None:
+@pytest.mark.parametrize(
+    ("socket_family", "peername", "peername_log"),
+    [
+        (socket.AF_INET, ("mqtt-broker.local", 1883), "mqtt-broker.local:1883"),
+        # https://github.com/fphammerle/switchbot-mqtt/issues/42#issuecomment-1173909335
+        (socket.AF_INET6, ("::1", 1883, 0, 0), "[::1]:1883"),
+    ],
+)
+def test__mqtt_on_connect(
+    caplog: _pytest.logging.LogCaptureFixture,
+    socket_family: int,  # socket.AddressFamily,
+    peername: typing.Tuple[typing.Union[str, int]],
+    peername_log: str,
+) -> None:
     mqtt_client = unittest.mock.MagicMock()
-    mqtt_client.socket().getpeername.return_value = ("mqtt-broker.local", 1883)
+    mqtt_client.socket().family = socket_family
+    mqtt_client.socket().getpeername.return_value = peername
     with caplog.at_level(logging.DEBUG):
         switchbot_mqtt._mqtt_on_connect(
             mqtt_client,
@@ -60,7 +75,7 @@ def test__mqtt_on_connect(caplog: _pytest.logging.LogCaptureFixture) -> None:
         (
             "switchbot_mqtt",
             logging.DEBUG,
-            "connected to MQTT broker mqtt-broker.local:1883",
+            "connected to MQTT broker " + peername_log,
         ),
         (
             "switchbot_mqtt._actors.base",

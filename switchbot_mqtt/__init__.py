@@ -17,6 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
+import socket
 import typing
 
 import paho.mqtt.client
@@ -36,8 +37,15 @@ def _mqtt_on_connect(
     # pylint: disable=unused-argument; callback
     # https://github.com/eclipse/paho.mqtt.python/blob/v1.5.0/src/paho/mqtt/client.py#L441
     assert return_code == 0, return_code  # connection accepted
-    mqtt_broker_host, mqtt_broker_port = mqtt_client.socket().getpeername()
-    _LOGGER.debug("connected to MQTT broker %s:%d", mqtt_broker_host, mqtt_broker_port)
+    mqtt_broker_host, mqtt_broker_port, *_ = mqtt_client.socket().getpeername()
+    # https://www.rfc-editor.org/rfc/rfc5952#section-6
+    _LOGGER.debug(
+        "connected to MQTT broker %s:%d",
+        f"[{mqtt_broker_host}]"
+        if mqtt_client.socket().family == socket.AF_INET6
+        else mqtt_broker_host,
+        mqtt_broker_port,
+    )
     _ButtonAutomator.mqtt_subscribe(mqtt_client=mqtt_client, settings=userdata)
     _CurtainMotor.mqtt_subscribe(mqtt_client=mqtt_client, settings=userdata)
 
