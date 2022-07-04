@@ -19,6 +19,11 @@ and [MQTT Cover](https://www.home-assistant.io/integrations/cover.mqtt/) platfor
 $ pip3 install --user --upgrade switchbot-mqtt
 ```
 
+**NOTE**: On Raspberry Pi you also need `libglib2.0-dev`. Install it with 
+```sh
+$ apt install libglib2.0-dev -y
+```
+
 ## Usage
 
 ```sh
@@ -158,12 +163,19 @@ Pre-built docker images are available at https://hub.docker.com/r/fphammerle/swi
 
 Annotation of signed tags `docker/*` contains docker image digests: https://github.com/fphammerle/switchbot-mqtt/tags
 
+**Build**
 ```sh
 $ docker build -t switchbot-mqtt .
-$ docker run --name spelunca_switchbot \
-    --userns host --network host \
-    switchbot-mqtt:latest \
-    switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS
+```
+
+**Install**
+```sh
+$ docker run -d \
+    --name switchbot \
+    --userns host \
+    --network host \
+    --restart=unless-stopped \
+    fphammerle/switchbot-mqtt --mqtt-host HOSTNAME_OR_IP_ADDRESS
 ```
 
 Alternatively, you can use `docker-compose`:
