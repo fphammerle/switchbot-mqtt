@@ -35,6 +35,52 @@ from switchbot_mqtt._utils import _MQTTTopicLevel, _MQTTTopicPlaceholder
 # pylint: disable=too-many-arguments; these are tests, no API
 
 
+def test__mqtt_on_connect(caplog: _pytest.logging.LogCaptureFixture) -> None:
+    mqtt_client = unittest.mock.MagicMock()
+    mqtt_client.socket().getpeername.return_value = ("mqtt-broker.local", 1883)
+    with caplog.at_level(logging.DEBUG):
+        switchbot_mqtt._mqtt_on_connect(
+            mqtt_client,
+            _MQTTCallbackUserdata(
+                retry_count=3,
+                device_passwords={},
+                fetch_device_info=False,
+                mqtt_topic_prefix="whatever/",
+            ),
+            {},
+            0,
+        )
+    assert mqtt_client.subscribe.call_args_list == [
+        unittest.mock.call("whatever/switch/switchbot/+/set"),
+        unittest.mock.call("whatever/cover/switchbot-curtain/+/set"),
+        unittest.mock.call("whatever/cover/switchbot-curtain/+/position/set-percent"),
+    ]
+    assert mqtt_client.message_callback_add.call_count == 3
+    assert caplog.record_tuples == [
+        (
+            "switchbot_mqtt",
+            logging.DEBUG,
+            "connected to MQTT broker mqtt-broker.local:1883",
+        ),
+        (
+            "switchbot_mqtt._actors.base",
+            logging.INFO,
+            "subscribing to MQTT topic 'whatever/switch/switchbot/+/set'",
+        ),
+        (
+            "switchbot_mqtt._actors.base",
+            logging.INFO,
+            "subscribing to MQTT topic 'whatever/cover/switchbot-curtain/+/set'",
+        ),
+        (
+            "switchbot_mqtt._actors.base",
+            logging.INFO,
+            "subscribing to MQTT topic "
+            "'whatever/cover/switchbot-curtain/+/position/set-percent'",
+        ),
+    ]
+
+
 @pytest.mark.parametrize("mqtt_host", ["mqtt-broker.local"])
 @pytest.mark.parametrize("mqtt_port", [1833])
 @pytest.mark.parametrize("retry_count", [3, 21])
