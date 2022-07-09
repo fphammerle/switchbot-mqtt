@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [3.2.1] - 2022-07-09
 ### Fixed
 - `ValueError: too many values to unpack` when connecting to MQTT broker via IPv6
   (https://github.com/fphammerle/switchbot-mqtt/issues/42)
@@ -134,7 +136,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subscribe to `homeassistant/switch/switchbot/+/set`.
   Handle `ON` and `OFF` messages.
 
-[Unreleased]: https://github.com/fphammerle/switchbot-mqtt/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/fphammerle/switchbot-mqtt/compare/v3.2.1...HEAD
+[3.2.1]: https://github.com/fphammerle/switchbot-mqtt/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/fphammerle/switchbot-mqtt/compare/v2.2.0...v3.0.0
