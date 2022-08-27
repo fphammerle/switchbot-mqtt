@@ -27,7 +27,7 @@ from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
 
 _LOGGER = logging.getLogger(__name__)
 
-ConnectionTopic="switchbot_mqtt/availability"
+availability_topic="switchbot_mqtt/availability"
 BirthMessage="online"
 LWT="offline"
 
@@ -50,7 +50,7 @@ def _mqtt_on_connect(
         else mqtt_broker_host,
         mqtt_broker_port,
     )
-    mqtt_client.publish(topic=ConnectionTopic,payload=BirthMessage)
+    mqtt_client.publish(topic=availability_topic,payload=BirthMessage)
     _ButtonAutomator.mqtt_subscribe(mqtt_client=mqtt_client, settings=userdata)
     _CurtainMotor.mqtt_subscribe(mqtt_client=mqtt_client, settings=userdata)
 
@@ -89,7 +89,7 @@ def _run(
         mqtt_client.username_pw_set(username=mqtt_username, password=mqtt_password)
     elif mqtt_password:
         raise ValueError("Missing MQTT username")
-    mqtt_client.will_set(topic=ConnectionTopic,payload=LWT)
+    mqtt_client.will_set(topic=availability_topic,payload=LWT)
     mqtt_client.connect(host=mqtt_host, port=mqtt_port)
     # https://github.com/eclipse/paho.mqtt.python/blob/master/src/paho/mqtt/client.py#L1740
     mqtt_client.loop_forever()
