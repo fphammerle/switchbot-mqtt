@@ -31,7 +31,7 @@ _MQTT_AVAILABILITY_TOPIC="switchbot_mqtt/availability"
 # "online" and "offline" to match home assistant's default settings
 # https://www.home-assistant.io/integrations/switch.mqtt/#payload_available
 _MQTT_BIRTH_PAYLOAD="online"
-LWT="offline"
+_MQTT_LAST_WILL_PAYLOAD="offline"
 
 
 def _mqtt_on_connect(
