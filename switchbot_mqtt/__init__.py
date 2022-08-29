@@ -27,7 +27,7 @@ from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
 
 _LOGGER = logging.getLogger(__name__)
 
-availability_topic="switchbot_mqtt/availability"
+_MQTT_AVAILABILITY_TOPIC="switchbot_mqtt/availability"
 BirthMessage="online"
 LWT="offline"
 
