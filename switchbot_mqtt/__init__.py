@@ -56,7 +56,7 @@ def _mqtt_on_connect(
         userdata.mqtt_topic_prefix + _MQTT_AVAILABILITY_TOPIC
     )
     mqtt_client.publish(
-        topic=_availability_topic_with_prefix, payload=_MQTT_BIRTH_PAYLOAD
+        topic=_availability_topic_with_prefix, payload=_MQTT_BIRTH_PAYLOAD, retain=True
     )
     _ButtonAutomator.mqtt_subscribe(mqtt_client=mqtt_client, settings=userdata)
     _CurtainMotor.mqtt_subscribe(mqtt_client=mqtt_client, settings=userdata)
@@ -98,7 +98,9 @@ def _run(
         raise ValueError("Missing MQTT username")
     _availability_topic_with_prefix = mqtt_topic_prefix + _MQTT_AVAILABILITY_TOPIC
     mqtt_client.will_set(
-        topic=_availability_topic_with_prefix, payload=_MQTT_LAST_WILL_PAYLOAD
+        topic=_availability_topic_with_prefix,
+        payload=_MQTT_LAST_WILL_PAYLOAD,
+        retain=True,
     )
     mqtt_client.connect(host=mqtt_host, port=mqtt_port)
     # https://github.com/eclipse/paho.mqtt.python/blob/master/src/paho/mqtt/client.py#L1740
