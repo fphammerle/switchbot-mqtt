@@ -105,6 +105,11 @@ switchbot-mqtt --mqtt-topic-prefix living-room/ …
 switchbot-mqtt --mqtt-topic-prefix '' …
 ```
 
+### Service Status Report
+
+After connecting to the MQTT broker, `switchbot-mqtt` will report `online` on topic `homeassistant/switchbot-mqtt/status`.
+When disconnecting (graceful shutdown or unexpected loss of connection), `offline` will be reported on the same topic.
+
 ## Home Assistant 🏡
 
 ### Rationale

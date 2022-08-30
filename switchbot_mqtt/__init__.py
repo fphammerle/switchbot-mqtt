@@ -27,6 +27,12 @@ from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
 
 _LOGGER = logging.getLogger(__name__)
 
+_MQTT_AVAILABILITY_TOPIC = "switchbot_mqtt/status"
+# "online" and "offline" to match home assistant's default settings
+# https://www.home-assistant.io/integrations/switch.mqtt/#payload_available
+_MQTT_BIRTH_PAYLOAD = "online"
+_MQTT_LAST_WILL_PAYLOAD = "offline"
+
 
 def _mqtt_on_connect(
     mqtt_client: paho.mqtt.client.Client,
@@ -45,6 +51,11 @@ def _mqtt_on_connect(
         if mqtt_client.socket().family == socket.AF_INET6
         else mqtt_broker_host,
         mqtt_broker_port,
+    )
+    mqtt_client.publish(
+        topic=userdata.mqtt_topic_prefix + _MQTT_AVAILABILITY_TOPIC,
+        payload=_MQTT_BIRTH_PAYLOAD,
+        retain=True,
     )
     _ButtonAutomator.mqtt_subscribe(mqtt_client=mqtt_client, settings=userdata)
     _CurtainMotor.mqtt_subscribe(mqtt_client=mqtt_client, settings=userdata)
@@ -84,6 +95,11 @@ def _run(
         mqtt_client.username_pw_set(username=mqtt_username, password=mqtt_password)
     elif mqtt_password:
         raise ValueError("Missing MQTT username")
+    mqtt_client.will_set(
+        topic=mqtt_topic_prefix + _MQTT_AVAILABILITY_TOPIC,
+        payload=_MQTT_LAST_WILL_PAYLOAD,
+        retain=True,
+    )
     mqtt_client.connect(host=mqtt_host, port=mqtt_port)
     # https://github.com/eclipse/paho.mqtt.python/blob/master/src/paho/mqtt/client.py#L1740
     mqtt_client.loop_forever()
