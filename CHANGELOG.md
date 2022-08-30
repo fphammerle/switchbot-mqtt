@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Birth ("online") and last will ("offline") message on topic
   `homeassistant/switchbot-mqtt/status`
-  (@hbasler, https://github.com/fphammerle/switchbot-mqtt/pull/105)
+  (@phbasler, https://github.com/fphammerle/switchbot-mqtt/pull/105)
 
 ## [3.2.1] - 2022-07-09
 ### Fixed
