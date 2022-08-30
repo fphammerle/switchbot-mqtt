@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Publish birth and last will message on expected/documented topic
+  `homeassistant/switchbot-mqtt/status`
+  (old/undocumented topic `homeassistant/switchbot_mqtt/status` kept for
+  backward compatibility until next major release)
 
 ## [3.3.0] - 2022-08-30
 ### Added
