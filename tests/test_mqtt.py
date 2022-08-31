@@ -66,7 +66,7 @@ def test__mqtt_on_connect(
             0,
         )
     mqtt_client.publish.assert_called_once_with(
-        topic="whatever/switchbot_mqtt/status", payload="online", retain=True
+        topic="whatever/switchbot-mqtt/status", payload="online", retain=True
     )
     assert mqtt_client.subscribe.call_args_list == [
         unittest.mock.call("whatever/switch/switchbot/+/set"),
@@ -142,7 +142,7 @@ def test__run(
     assert not mqtt_client_mock().username_pw_set.called
     mqtt_client_mock().tls_set.assert_called_once_with(ca_certs=None)
     mqtt_client_mock().will_set.assert_called_once_with(
-        topic="homeassistant/switchbot_mqtt/status", payload="offline", retain=True
+        topic="homeassistant/switchbot-mqtt/status", payload="offline", retain=True
     )
     mqtt_client_mock().connect.assert_called_once_with(host=mqtt_host, port=mqtt_port)
     mqtt_client_mock().socket().getpeername.return_value = (mqtt_host, mqtt_port)

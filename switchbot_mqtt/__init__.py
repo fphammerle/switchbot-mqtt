@@ -27,7 +27,7 @@ from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
 
 _LOGGER = logging.getLogger(__name__)
 
-_MQTT_AVAILABILITY_TOPIC = "switchbot_mqtt/status"
+_MQTT_AVAILABILITY_TOPIC = "switchbot-mqtt/status"
 # "online" and "offline" to match home assistant's default settings
 # https://www.home-assistant.io/integrations/switch.mqtt/#payload_available
 _MQTT_BIRTH_PAYLOAD = "online"
