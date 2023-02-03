@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-switchbot-mqtt = {editable = true,path = "."}
+switchbot-mqtt = {editable = true, path = "."}
 
 [dev-packages]
 black = "*"
@@ -14,6 +14,9 @@ pylint-import-requirements = "*"
 pytest = "*"
 pytest-cov = "*"
 
+# python3.7 compatibility
+# https://github.com/PyCQA/isort/commit/47cedf3583f338e8ce9c906fc95c9fee6c57404d
+isort = "<5.12"
 # mypy on python<3.8
 typed-ast = {markers = "python_version < '3.8'"}
 # >    File "[...]/lib/python3.10/site-packages/_pytest/_code/code.py", line 60, in <module>
