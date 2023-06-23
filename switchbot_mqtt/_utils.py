@@ -43,7 +43,7 @@ def _join_mqtt_topic_levels(
     mac_address: str,
 ) -> str:
     return topic_prefix + "/".join(
-        mac_address if l == _MQTTTopicPlaceholder.MAC_ADDRESS else typing.cast(str, l)
+        mac_address if l == _MQTTTopicPlaceholder.MAC_ADDRESS else l
         for l in topic_levels
     )
 
