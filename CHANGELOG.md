@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - declare compatibility with `python3.11`
 
+### Removed
+- compatibility with `python3.7`
+
 ## [3.3.1] - 2022-08-31
 ### Fixed
 - Publish birth and last will message on expected/documented topic

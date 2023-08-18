@@ -14,11 +14,12 @@ pylint-import-requirements = "*"
 pytest = "*"
 pytest-cov = "*"
 
-# python3.7 compatibility
-# https://github.com/PyCQA/isort/commit/47cedf3583f338e8ce9c906fc95c9fee6c57404d
-isort = "<5.12"
-# mypy on python<3.8
-typed-ast = {markers = "python_version < '3.8'"}
+# python3.10 compatibility
+# >   File "[...]/lib/python3.10/site-packages/mypy/main.py", line 11, in <module>
+# >     from typing_extensions import Final, NoReturn
+# > ModuleNotFoundError: No module named 'typing_extensions'
+typing-extensions = {markers = ""}
+# python<3.11 compatibility
 # >    File "[...]/lib/python3.10/site-packages/_pytest/_code/code.py", line 60, in <module>
 # >     from exceptiongroup import BaseExceptionGroup
 # > ModuleNotFoundError: No module named 'exceptiongroup'
