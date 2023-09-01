@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: docker/setup-qemu-action@v2.2.0
-    - uses: docker/setup-buildx-action@v2.9.1
+    - uses: docker/setup-buildx-action@v2.10.0
     # > By default, this action uses the Git context so you don't need to use
     # > the actions/checkout action to checkout the repository because this
     # > will be done directly by buildkit. [...]
