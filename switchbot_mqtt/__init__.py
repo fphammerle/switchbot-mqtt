@@ -61,7 +61,7 @@ def _mqtt_on_connect(
     _CurtainMotor.mqtt_subscribe(mqtt_client=mqtt_client, settings=userdata)
 
 
-def _run(
+def _run(  # pylint: disable=too-many-arguments
     *,
     mqtt_host: str,
     mqtt_port: int,
