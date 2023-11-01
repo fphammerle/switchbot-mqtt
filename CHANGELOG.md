@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (bluepy-helper replaced with bleak)
 - replaced [paho-mqtt](https://github.com/eclipse/paho.mqtt.python)
   with its async wrapper [aiomqtt](https://github.com/sbtinstruments/aiomqtt)
+- container image: upgraded alpine base image from v3.13.1 to v3.18.4
 
 ### Removed
 - command-line option `--mqtt-enable-tls` (TLS now enabled by default)
