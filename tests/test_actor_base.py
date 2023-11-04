@@ -17,7 +17,9 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import typing
+import unittest.mock
 
+import bleak.backends.device
 import paho.mqtt.client
 import pytest
 import switchbot
@@ -31,7 +33,7 @@ def test_abstract() -> None:
     with pytest.raises(TypeError, match=r"\babstract class\b"):
         # pylint: disable=abstract-class-instantiated
         switchbot_mqtt._actors.base._MQTTControlledActor(  # type: ignore
-            mac_address="dummy", retry_count=21, password=None
+            device=unittest.mock.Mock(), retry_count=21, password=None
         )
 
 
@@ -40,11 +42,12 @@ async def test_execute_command_abstract() -> None:
     class _ActorMock(switchbot_mqtt._actors.base._MQTTControlledActor):
         # pylint: disable=duplicate-code
         def __init__(
-            self, mac_address: str, retry_count: int, password: typing.Optional[str]
+            self,
+            device: bleak.backends.device.BLEDevice,
+            retry_count: int,
+            password: typing.Optional[str],
         ) -> None:
-            super().__init__(
-                mac_address=mac_address, retry_count=retry_count, password=password
-            )
+            super().__init__(device=device, retry_count=retry_count, password=password)
 
         async def execute_command(
             self,
@@ -69,13 +72,13 @@ async def test_execute_command_abstract() -> None:
     with pytest.raises(TypeError) as exc_info:
         # pylint: disable=abstract-class-instantiated
         switchbot_mqtt._actors.base._MQTTControlledActor(  # type: ignore
-            mac_address="aa:bb:cc:dd:ee:ff", retry_count=42, password=None
+            device=unittest.mock.Mock(), retry_count=42, password=None
         )
     exc_info.match(
         r"^Can't instantiate abstract class _MQTTControlledActor"
         r" with abstract methods __init__, _get_device, execute_command$"
     )
-    actor = _ActorMock(mac_address="aa:bb:cc:dd:ee:ff", retry_count=42, password=None)
+    actor = _ActorMock(device=unittest.mock.Mock(), retry_count=42, password=None)
     with pytest.raises(NotImplementedError):
         await actor.execute_command(
             mqtt_message_payload=b"dummy",

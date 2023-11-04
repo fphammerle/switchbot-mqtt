@@ -17,7 +17,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import enum
-import logging
 import queue  # pylint: disable=unused-import; in type hint
 import re
 import typing
@@ -66,17 +65,3 @@ def _parse_mqtt_topic(
         elif expected_part != given_part:
             raise ValueError(f"unexpected topic {topic}")
     return attrs
-
-
-class _QueueLogHandler(logging.Handler):
-    """
-    logging.handlers.QueueHandler drops exc_info
-    """
-
-    # TypeError: 'type' object is not subscriptable
-    def __init__(self, log_queue: "queue.Queue[logging.LogRecord]") -> None:
-        self.log_queue = log_queue
-        super().__init__()
-
-    def emit(self, record: logging.LogRecord) -> None:
-        self.log_queue.put(record)

@@ -77,13 +77,10 @@ setuptools.setup(
     # >=3.8 unittest.mock.AsyncMock
     python_requires=">=3.8",
     install_requires=[
-        # >=1.3.0 for btle.BTLEManagementError (could be replaced with BTLEException)
-        # >=0.1.0 for btle.helperExe
-        # https://github.com/IanHarvey/bluepy/tree/v/1.3.0#release-notes
-        "bluepy>=1.3.0,<2",
-        # >=0.10.0 for SwitchbotCurtain.{update,get_position}
-        # >=0.9.0 for SwitchbotCurtain.set_position
-        "PySwitchbot>=0.10.0,<0.13",
+        "bleak<0.22",
+        # v0.14.0 replaced bluepy with bleak
+        # https://github.com/Danielhiversen/pySwitchbot/pull/32
+        "PySwitchbot>=0.14.0,<0.41",
         "aiomqtt<2",
     ],
     setup_requires=["setuptools_scm"],

@@ -21,7 +21,6 @@ import typing
 import unittest.mock
 
 import _pytest.logging  # pylint: disable=import-private-name; typing
-import bluepy.btle
 import pytest
 
 # pylint: disable=import-private-name; internal
@@ -64,12 +63,14 @@ async def test__report_position(
     position: int,
     expected_payload: bytes,
 ) -> None:
+    device = unittest.mock.Mock()
+    device.address = mac_address
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain.__init__", return_value=None
     ) as device_init_mock, caplog.at_level(logging.DEBUG):
-        actor = _CurtainMotor(mac_address=mac_address, retry_count=7, password=None)
+        actor = _CurtainMotor(device=device, retry_count=7, password=None)
     device_init_mock.assert_called_once_with(
-        mac=mac_address,
+        device=device,
         retry_count=7,
         password=None,
         # > The position of the curtain is saved in self._pos with 0 = open and 100 = closed.
@@ -79,12 +80,9 @@ async def test__report_position(
         # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L150
         reverse_mode=True,
     )
+    actor._basic_device_info = {"position": position}
     mqtt_client = unittest.mock.Mock()
-    with unittest.mock.patch.object(
-        actor, "_mqtt_publish"
-    ) as publish_mock, unittest.mock.patch(
-        "switchbot.SwitchbotCurtain.get_position", return_value=position
-    ):
+    with unittest.mock.patch.object(actor, "_mqtt_publish") as publish_mock:
         await actor._report_position(
             mqtt_client=mqtt_client, mqtt_topic_prefix="topic-prefix"
         )
@@ -110,16 +108,11 @@ async def test__report_position_invalid(
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain.__init__", return_value=None
     ), caplog.at_level(logging.DEBUG):
-        actor = _CurtainMotor(
-            mac_address="aa:bb:cc:dd:ee:ff", retry_count=3, password=None
-        )
+        actor = _CurtainMotor(device=unittest.mock.Mock(), retry_count=3, password=None)
+    actor._basic_device_info = {"position": position}
     with unittest.mock.patch.object(
         actor, "_mqtt_publish"
-    ) as publish_mock, unittest.mock.patch(
-        "switchbot.SwitchbotCurtain.get_position", return_value=position
-    ), pytest.raises(
-        ValueError
-    ):
+    ) as publish_mock, pytest.raises(ValueError):
         await actor._report_position(
             mqtt_client=unittest.mock.Mock(), mqtt_topic_prefix="dummy2"
         )
@@ -139,13 +132,15 @@ async def test__update_and_report_device_info(
     position: int,
     position_encoded: bytes,
 ) -> None:
+    device = unittest.mock.Mock()
+    device.address = "dummy"
     with unittest.mock.patch("switchbot.SwitchbotCurtain.__init__", return_value=None):
-        actor = _CurtainMotor(mac_address="dummy", retry_count=21, password=None)
-    actor._get_device()._switchbot_device_data = {
-        "data": {"battery": battery_percent, "position": position}
-    }
+        actor = _CurtainMotor(device=device, retry_count=21, password=None)
     mqtt_client_mock = unittest.mock.AsyncMock()
-    with unittest.mock.patch("switchbot.SwitchbotCurtain.update") as update_mock:
+    with unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.get_basic_info",
+        return_value={"battery": battery_percent, "position": position},
+    ) as update_mock:
         await actor._update_and_report_device_info(
             mqtt_client=mqtt_client_mock,
             mqtt_topic_prefix=topic_prefix,
@@ -173,25 +168,29 @@ async def test__update_and_report_device_info(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "exception",
-    [
-        PermissionError("bluepy-helper failed to enable low energy mode..."),
-        bluepy.btle.BTLEManagementError("test"),
-    ],
-)
-async def test__update_and_report_device_info_update_error(
-    exception: Exception,
+@pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
+async def test__update_and_report_device_info_get_basic_info_failed(
+    caplog: _pytest.logging.LogCaptureFixture, mac_address: str
 ) -> None:
-    actor = _CurtainMotor(mac_address="dummy", retry_count=21, password=None)
+    device = unittest.mock.Mock()
+    device.address = mac_address
+    actor = _CurtainMotor(device=device, retry_count=21, password=None)
     mqtt_client_mock = unittest.mock.MagicMock()
+    # https://github.com/Danielhiversen/pySwitchbot/blob/0.40.1/switchbot/devices/curtain.py#L96
     with unittest.mock.patch.object(
-        actor._get_device(), "update", side_effect=exception
-    ), pytest.raises(type(exception)):
+        actor._get_device(), "get_basic_info", return_value=None
+    ), caplog.at_level(logging.DEBUG):
         await actor._update_and_report_device_info(
             mqtt_client_mock, mqtt_topic_prefix="dummy", report_position=True
         )
     mqtt_client_mock.publish.assert_not_called()
+    assert caplog.record_tuples == [
+        (
+            "switchbot_mqtt._actors.base",
+            logging.ERROR,
+            f"failed to retrieve basic device info from {mac_address}",
+        )
+    ]
 
 
 @pytest.mark.asyncio
@@ -227,12 +226,12 @@ async def test_execute_command(
     command_successful: bool,
 ) -> None:
     # pylint: disable=too-many-locals
+    device = unittest.mock.Mock()
+    device.address = mac_address
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain.__init__", return_value=None
     ) as device_init_mock, caplog.at_level(logging.INFO):
-        actor = _CurtainMotor(
-            mac_address=mac_address, retry_count=retry_count, password=password
-        )
+        actor = _CurtainMotor(device=device, retry_count=retry_count, password=password)
         mqtt_client = unittest.mock.Mock()
         with unittest.mock.patch.object(
             actor, "report_state"
@@ -248,7 +247,7 @@ async def test_execute_command(
                 mqtt_topic_prefix=topic_prefix,
             )
     device_init_mock.assert_called_once_with(
-        mac=mac_address, password=password, retry_count=retry_count, reverse_mode=True
+        device=device, password=password, retry_count=retry_count, reverse_mode=True
     )
     action_mock.assert_called_once_with()
     if command_successful:
@@ -290,19 +289,16 @@ async def test_execute_command(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
 @pytest.mark.parametrize("password", ["secret"])
 @pytest.mark.parametrize("message_payload", [b"OEFFNEN", b""])
 async def test_execute_command_invalid_payload(
-    caplog: _pytest.logging.LogCaptureFixture,
-    mac_address: str,
-    password: str,
-    message_payload: bytes,
+    caplog: _pytest.logging.LogCaptureFixture, password: str, message_payload: bytes
 ) -> None:
+    device = unittest.mock.Mock()
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
     ) as device_mock, caplog.at_level(logging.INFO):
-        actor = _CurtainMotor(mac_address=mac_address, retry_count=7, password=password)
+        actor = _CurtainMotor(device=device, retry_count=7, password=password)
         with unittest.mock.patch.object(actor, "report_state") as report_mock:
             await actor.execute_command(
                 mqtt_client=unittest.mock.Mock(),
@@ -311,7 +307,7 @@ async def test_execute_command_invalid_payload(
                 mqtt_topic_prefix="dummy",
             )
     device_mock.assert_called_once_with(
-        mac=mac_address, password=password, retry_count=7, reverse_mode=True
+        device=device, password=password, retry_count=7, reverse_mode=True
     )
     assert not device_mock().mock_calls  # no methods called
     report_mock.assert_not_called()
@@ -326,39 +322,37 @@ async def test_execute_command_invalid_payload(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
-@pytest.mark.parametrize("message_payload", [b"OPEN", b"CLOSE", b"STOP"])
-async def test_execute_command_bluetooth_error(
-    caplog: _pytest.logging.LogCaptureFixture, mac_address: str, message_payload: bytes
+@pytest.mark.parametrize(
+    ("message_payload", "action"),
+    [
+        (b"OPEN", "switchbot.SwitchbotCurtain.open"),
+        (b"CLOSE", "switchbot.SwitchbotCurtain.close"),
+        (b"STOP", "switchbot.SwitchbotCurtain.stop"),
+    ],
+)
+async def test_execute_command_failed(
+    caplog: _pytest.logging.LogCaptureFixture,
+    mac_address: str,
+    message_payload: bytes,
+    action: str,
 ) -> None:
-    """
-    paho.mqtt.python>=1.5.1 no longer implicitly suppresses exceptions in callbacks.
-    verify pySwitchbot catches exceptions raised in bluetooth stack.
-    https://github.com/Danielhiversen/pySwitchbot/blob/0.8.0/switchbot/__init__.py#L48
-    https://github.com/Danielhiversen/pySwitchbot/blob/0.8.0/switchbot/__init__.py#L94
-    """
-    with unittest.mock.patch(
-        "bluepy.btle.Peripheral",
-        side_effect=bluepy.btle.BTLEDisconnectError(
-            f"Failed to connect to peripheral {mac_address}, addr type: random"
-        ),
-    ), caplog.at_level(logging.ERROR):
+    device = unittest.mock.Mock()
+    device.address = mac_address
+    with unittest.mock.patch(action, return_value=False), caplog.at_level(
+        logging.ERROR
+    ):
         await _CurtainMotor(
-            mac_address=mac_address, retry_count=0, password="secret"
+            device=device, retry_count=0, password="secret"
         ).execute_command(
             mqtt_client=unittest.mock.Mock(),
             mqtt_message_payload=message_payload,
             update_device_info=True,
             mqtt_topic_prefix="dummy",
         )
-    assert len(caplog.records) == 2
-    assert caplog.records[0].name == "switchbot"
-    assert caplog.records[0].levelno == logging.ERROR
-    assert caplog.records[0].msg.startswith(
-        # pySwitchbot<0.11 had '.' suffix
-        "Switchbot communication failed. Stopping trying",
-    )
-    assert caplog.record_tuples[1] == (
-        "switchbot_mqtt._actors",
-        logging.ERROR,
-        f"failed to {message_payload.decode().lower()} switchbot curtain {mac_address}",
-    )
+    assert caplog.record_tuples == [
+        (
+            "switchbot_mqtt._actors",
+            logging.ERROR,
+            f"failed to {message_payload.decode().lower()} switchbot curtain {mac_address}",
+        )
+    ]
