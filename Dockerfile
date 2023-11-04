@@ -10,15 +10,19 @@ ARG SOURCE_DIR_PATH=/switchbot-mqtt
 FROM $BASE_IMAGE as build
 
 RUN apk add --no-cache \
+        cargo `# cryptography build` \
         gcc \
         git `# setuptools_scm` \
         glib-dev \
         jq `# edit Pipfile.lock` \
         make \
         musl-dev \
+        openssl-dev `# cryptography build` \
         py3-certifi `# pipenv` \
         py3-pip `# pipenv install` \
         py3-virtualenv `# pipenv` \
+        python3-dev `# Python.h for cffi build` \
+        rust `# cryptography build` \
     && adduser -S build
 
 USER build
@@ -33,9 +37,10 @@ ENV PIPENV_CACHE_DIR=/tmp/pipenv-cache \
 # `sponge` is not pre-installed
 RUN jq 'del(.default."switchbot-mqtt", .default."sanitized-package")' Pipfile.lock > Pipfile.lock~ \
     && mv Pipfile.lock~ Pipfile.lock \
-    && pipenv install --deploy --verbose
+    && pipenv install --deploy
 COPY --chown=build:nobody . $SOURCE_DIR_PATH
-RUN pipenv install --deploy --verbose \
+RUN if ! git status; then export SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0; fi \
+    && pipenv install --deploy \
     && pipenv graph \
     && pipenv run pip freeze \
     && rm -rf .git/ $PIPENV_CACHE_DIR \
