@@ -73,8 +73,9 @@ setuptools.setup(
     ],
     entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt._cli:_main"]},
     # >=3.6 variable type hints, f-strings, typing.Collection & * to force keyword-only arguments
-    # >=3.7 postponed evaluation of type annotations (PEP563) & dataclass
-    python_requires=">=3.8",  # python<3.8 untested
+    # >=3.7 postponed evaluation of type annotations (PEP563) & asyncio.run
+    # >=3.8 unittest.mock.AsyncMock
+    python_requires=">=3.8",
     install_requires=[
         # >=1.3.0 for btle.BTLEManagementError (could be replaced with BTLEException)
         # >=0.1.0 for btle.helperExe
@@ -83,7 +84,7 @@ setuptools.setup(
         # >=0.10.0 for SwitchbotCurtain.{update,get_position}
         # >=0.9.0 for SwitchbotCurtain.set_position
         "PySwitchbot>=0.10.0,<0.13",
-        "paho-mqtt<2",
+        "aiomqtt<2",
     ],
     setup_requires=["setuptools_scm"],
     tests_require=["pytest"],

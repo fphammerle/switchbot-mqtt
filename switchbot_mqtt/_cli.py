@@ -17,6 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
+import asyncio
 import json
 import logging
 import os
@@ -154,17 +155,20 @@ def _main() -> None:
         device_passwords = json.loads(args.device_password_path.read_text())
     else:
         device_passwords = {}
-    switchbot_mqtt._run(  # pylint: disable=protected-access; internal
-        mqtt_host=args.mqtt_host,
-        mqtt_port=mqtt_port,
-        mqtt_disable_tls=not args.mqtt_enable_tls,
-        mqtt_username=args.mqtt_username,
-        mqtt_password=mqtt_password,
-        mqtt_topic_prefix=args.mqtt_topic_prefix,
-        retry_count=args.retry_count,
-        device_passwords=device_passwords,
-        fetch_device_info=args.fetch_device_info
-        # > In formal language theory, the empty string, [...], is the unique string of length zero.
-        # https://en.wikipedia.org/wiki/Empty_string
-        or bool(os.environ.get("FETCH_DEVICE_INFO")),
+    asyncio.run(
+        switchbot_mqtt._run(  # pylint: disable=protected-access; internal
+            mqtt_host=args.mqtt_host,
+            mqtt_port=mqtt_port,
+            mqtt_disable_tls=not args.mqtt_enable_tls,
+            mqtt_username=args.mqtt_username,
+            mqtt_password=mqtt_password,
+            mqtt_topic_prefix=args.mqtt_topic_prefix,
+            retry_count=args.retry_count,
+            device_passwords=device_passwords,
+            fetch_device_info=args.fetch_device_info
+            # > In formal language theory, the empty string, [...],
+            # > is the unique string of length zero.
+            # https://en.wikipedia.org/wiki/Empty_string
+            or bool(os.environ.get("FETCH_DEVICE_INFO")),
+        )
     )

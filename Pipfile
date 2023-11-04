@@ -11,6 +11,7 @@ black = "*"
 mypy = "*"
 pylint = "*"
 pytest = "*"
+pytest-asyncio = "*"
 pytest-cov = "*"
 
 # python3.10 compatibility

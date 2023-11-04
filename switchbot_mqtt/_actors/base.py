@@ -26,14 +26,13 @@
 from __future__ import annotations  # PEP563 (default in python>=3.10)
 
 import abc
-import dataclasses
 import logging
 import queue
 import shlex
 import typing
 
+import aiomqtt
 import bluepy.btle
-import paho.mqtt.client
 import switchbot
 from switchbot_mqtt._utils import (
     _join_mqtt_topic_levels,
@@ -45,14 +44,6 @@ from switchbot_mqtt._utils import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-
-@dataclasses.dataclass
-class _MQTTCallbackUserdata:
-    retry_count: int
-    device_passwords: typing.Dict[str, str]
-    fetch_device_info: bool
-    mqtt_topic_prefix: str
 
 
 class _MQTTControlledActor(abc.ABC):
@@ -131,37 +122,40 @@ class _MQTTControlledActor(abc.ABC):
                 ) from exc
             raise
 
-    def _report_battery_level(
-        self, mqtt_client: paho.mqtt.client.Client, mqtt_topic_prefix: str
+    async def _report_battery_level(
+        self, mqtt_client: aiomqtt.Client, mqtt_topic_prefix: str
     ) -> None:
         # > battery: Percentage of battery that is left.
         # https://www.home-assistant.io/integrations/sensor/#device-class
-        self._mqtt_publish(
+        await self._mqtt_publish(
             topic_prefix=mqtt_topic_prefix,
             topic_levels=self._MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS,
             payload=str(self._get_device().get_battery_percent()).encode(),
             mqtt_client=mqtt_client,
         )
 
-    def _update_and_report_device_info(
-        self, mqtt_client: paho.mqtt.client.Client, mqtt_topic_prefix: str
+    async def _update_and_report_device_info(
+        self, mqtt_client: aiomqtt.Client, mqtt_topic_prefix: str
     ) -> None:
         self._update_device_info()
-        self._report_battery_level(
+        await self._report_battery_level(
             mqtt_client=mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix
         )
 
     @classmethod
     def _init_from_topic(
         cls,
-        topic: str,
+        *,
+        topic: aiomqtt.Topic,
+        mqtt_topic_prefix: str,
         expected_topic_levels: typing.Collection[_MQTTTopicLevel],
-        settings: _MQTTCallbackUserdata,
+        retry_count: int,
+        device_passwords: typing.Dict[str, str],
     ) -> typing.Optional[_MQTTControlledActor]:
         try:
             mac_address = _parse_mqtt_topic(
-                topic=topic,
-                expected_prefix=settings.mqtt_topic_prefix,
+                topic=topic.value,
+                expected_prefix=mqtt_topic_prefix,
                 expected_levels=expected_topic_levels,
             )[_MQTTTopicPlaceholder.MAC_ADDRESS]
         except ValueError as exc:
@@ -172,17 +166,21 @@ class _MQTTControlledActor(abc.ABC):
             return None
         return cls(
             mac_address=mac_address,
-            retry_count=settings.retry_count,
-            password=settings.device_passwords.get(mac_address, None),
+            retry_count=retry_count,
+            password=device_passwords.get(mac_address, None),
         )
 
     @classmethod
-    def _mqtt_update_device_info_callback(
+    async def _mqtt_update_device_info_callback(
         # pylint: disable=duplicate-code; other callbacks with same params
         cls,
-        mqtt_client: paho.mqtt.client.Client,
-        userdata: _MQTTCallbackUserdata,
-        message: paho.mqtt.client.MQTTMessage,
+        *,
+        mqtt_client: aiomqtt.Client,
+        message: aiomqtt.Message,
+        mqtt_topic_prefix: str,
+        retry_count: int,
+        device_passwords: typing.Dict[str, str],
+        fetch_device_info: bool,
     ) -> None:
         # pylint: disable=unused-argument; callback
         # https://github.com/eclipse/paho.mqtt.python/blob/v1.5.0/src/paho/mqtt/client.py#L469
@@ -192,33 +190,39 @@ class _MQTTControlledActor(abc.ABC):
             return
         actor = cls._init_from_topic(
             topic=message.topic,
+            mqtt_topic_prefix=mqtt_topic_prefix,
             expected_topic_levels=cls._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS,
-            settings=userdata,
+            retry_count=retry_count,
+            device_passwords=device_passwords,
         )
         if actor:
             # pylint: disable=protected-access; own instance
-            actor._update_and_report_device_info(
-                mqtt_client=mqtt_client, mqtt_topic_prefix=userdata.mqtt_topic_prefix
+            await actor._update_and_report_device_info(
+                mqtt_client=mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix
             )
 
     @abc.abstractmethod
-    def execute_command(  # pylint: disable=duplicate-code; implementations
+    async def execute_command(  # pylint: disable=duplicate-code; implementations
         self,
         *,
         mqtt_message_payload: bytes,
-        mqtt_client: paho.mqtt.client.Client,
+        mqtt_client: aiomqtt.Client,
         update_device_info: bool,
         mqtt_topic_prefix: str,
     ) -> None:
         raise NotImplementedError()
 
     @classmethod
-    def _mqtt_command_callback(
+    async def _mqtt_command_callback(
         # pylint: disable=duplicate-code; other callbacks with same params
         cls,
-        mqtt_client: paho.mqtt.client.Client,
-        userdata: _MQTTCallbackUserdata,
-        message: paho.mqtt.client.MQTTMessage,
+        *,
+        mqtt_client: aiomqtt.Client,
+        message: aiomqtt.Message,
+        mqtt_topic_prefix: str,
+        retry_count: int,
+        device_passwords: typing.Dict[str, str],
+        fetch_device_info: bool,
     ) -> None:
         # pylint: disable=unused-argument; callback
         # https://github.com/eclipse/paho.mqtt.python/blob/v1.5.0/src/paho/mqtt/client.py#L469
@@ -228,15 +232,18 @@ class _MQTTControlledActor(abc.ABC):
             return
         actor = cls._init_from_topic(
             topic=message.topic,
+            mqtt_topic_prefix=mqtt_topic_prefix,
             expected_topic_levels=cls.MQTT_COMMAND_TOPIC_LEVELS,
-            settings=userdata,
+            retry_count=retry_count,
+            device_passwords=device_passwords,
         )
         if actor:
-            actor.execute_command(
+            assert isinstance(message.payload, bytes), message.payload
+            await actor.execute_command(
                 mqtt_message_payload=message.payload,
                 mqtt_client=mqtt_client,
-                update_device_info=userdata.fetch_device_info,
-                mqtt_topic_prefix=userdata.mqtt_topic_prefix,
+                update_device_info=fetch_device_info,
+                mqtt_topic_prefix=mqtt_topic_prefix,
             )
 
     @classmethod
@@ -257,28 +264,32 @@ class _MQTTControlledActor(abc.ABC):
         return callbacks
 
     @classmethod
-    def mqtt_subscribe(
-        cls, *, mqtt_client: paho.mqtt.client.Client, settings: _MQTTCallbackUserdata
-    ) -> None:
+    async def mqtt_subscribe(
+        cls,
+        *,
+        mqtt_client: aiomqtt.Client,
+        mqtt_topic_prefix: str,
+        fetch_device_info: bool,
+    ) -> typing.AsyncIterator[typing.Tuple[str, typing.Callable]]:
         for topic_levels, callback in cls._get_mqtt_message_callbacks(
-            enable_device_info_update_topic=settings.fetch_device_info
+            enable_device_info_update_topic=fetch_device_info
         ).items():
             topic = _join_mqtt_topic_levels(
-                topic_prefix=settings.mqtt_topic_prefix,
+                topic_prefix=mqtt_topic_prefix,
                 topic_levels=topic_levels,
                 mac_address="+",
             )
             _LOGGER.info("subscribing to MQTT topic %r", topic)
-            mqtt_client.subscribe(topic)
-            mqtt_client.message_callback_add(sub=topic, callback=callback)
+            await mqtt_client.subscribe(topic)
+            yield (topic, callback)
 
-    def _mqtt_publish(
+    async def _mqtt_publish(
         self,
         *,
         topic_prefix: str,
         topic_levels: typing.Iterable[_MQTTTopicLevel],
         payload: bytes,
-        mqtt_client: paho.mqtt.client.Client,
+        mqtt_client: aiomqtt.Client,
     ) -> None:
         topic = _join_mqtt_topic_levels(
             topic_prefix=topic_prefix,
@@ -287,24 +298,22 @@ class _MQTTControlledActor(abc.ABC):
         )
         # https://pypi.org/project/paho-mqtt/#publishing
         _LOGGER.debug("publishing topic=%s payload=%r", topic, payload)
-        message_info: paho.mqtt.client.MQTTMessageInfo = mqtt_client.publish(
-            topic=topic, payload=payload, retain=True
-        )
-        # wait before checking status?
-        if message_info.rc != paho.mqtt.client.MQTT_ERR_SUCCESS:
+        try:
+            await mqtt_client.publish(topic=topic, payload=payload, retain=True)
+        except aiomqtt.MqttCodeError as exc:
             _LOGGER.error(
-                "Failed to publish MQTT message on topic %s (rc=%d)",
+                "Failed to publish MQTT message on topic %s: aiomqtt.MqttCodeError %s",
                 topic,
-                message_info.rc,
+                exc,
             )
 
-    def report_state(
+    async def report_state(
         self,
         state: bytes,
-        mqtt_client: paho.mqtt.client.Client,
+        mqtt_client: aiomqtt.Client,
         mqtt_topic_prefix: str,
     ) -> None:
-        self._mqtt_publish(
+        await self._mqtt_publish(
             topic_prefix=mqtt_topic_prefix,
             topic_levels=self.MQTT_STATE_TOPIC_LEVELS,
             payload=state,

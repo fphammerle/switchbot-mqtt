@@ -43,27 +43,29 @@ def test_get_mqtt_battery_percentage_topic(prefix: str, mac_address: str) -> Non
     )
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("topic_prefix", ["homeassistant/", "prefix-", ""])
 @pytest.mark.parametrize(("battery_percent", "battery_percent_encoded"), [(42, b"42")])
-def test__update_and_report_device_info(
+async def test__update_and_report_device_info(
     topic_prefix: str, battery_percent: int, battery_percent_encoded: bytes
 ) -> None:
     with unittest.mock.patch("switchbot.SwitchbotCurtain.__init__", return_value=None):
         actor = _ButtonAutomator(mac_address="dummy", retry_count=21, password=None)
     actor._get_device()._switchbot_device_data = {"data": {"battery": battery_percent}}
-    mqtt_client_mock = unittest.mock.MagicMock()
+    mqtt_client_mock = unittest.mock.AsyncMock()
     with unittest.mock.patch("switchbot.Switchbot.update") as update_mock:
-        actor._update_and_report_device_info(
+        await actor._update_and_report_device_info(
             mqtt_client=mqtt_client_mock, mqtt_topic_prefix=topic_prefix
         )
     update_mock.assert_called_once_with()
-    mqtt_client_mock.publish.assert_called_once_with(
+    mqtt_client_mock.publish.assert_awaited_once_with(
         topic=f"{topic_prefix}switch/switchbot/dummy/battery-percentage",
         payload=battery_percent_encoded,
         retain=True,
     )
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("topic_prefix", ["homeassistant/"])
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff", "aa:bb:cc:11:22:33"])
 @pytest.mark.parametrize("password", (None, "secret"))
@@ -81,7 +83,7 @@ def test__update_and_report_device_info(
 )
 @pytest.mark.parametrize("update_device_info", [True, False])
 @pytest.mark.parametrize("command_successful", [True, False])
-def test_execute_command(
+async def test_execute_command(
     caplog: _pytest.logging.LogCaptureFixture,
     topic_prefix: str,
     mac_address: str,
@@ -98,6 +100,7 @@ def test_execute_command(
         actor = _ButtonAutomator(
             mac_address=mac_address, retry_count=retry_count, password=password
         )
+        mqtt_client = unittest.mock.Mock()
         with unittest.mock.patch.object(
             actor, "report_state"
         ) as report_mock, unittest.mock.patch(
@@ -105,8 +108,8 @@ def test_execute_command(
         ) as action_mock, unittest.mock.patch.object(
             actor, "_update_and_report_device_info"
         ) as update_device_info_mock:
-            actor.execute_command(
-                mqtt_client="dummy",
+            await actor.execute_command(
+                mqtt_client=mqtt_client,
                 mqtt_message_payload=message_payload,
                 update_device_info=update_device_info,
                 mqtt_topic_prefix=topic_prefix,
@@ -124,7 +127,7 @@ def test_execute_command(
             )
         ]
         report_mock.assert_called_once_with(
-            mqtt_client="dummy",
+            mqtt_client=mqtt_client,
             mqtt_topic_prefix=topic_prefix,
             state=message_payload.upper(),
         )
@@ -141,9 +144,10 @@ def test_execute_command(
         update_device_info_mock.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
 @pytest.mark.parametrize("message_payload", [b"EIN", b""])
-def test_execute_command_invalid_payload(
+async def test_execute_command_invalid_payload(
     caplog: _pytest.logging.LogCaptureFixture, mac_address: str, message_payload: bytes
 ) -> None:
     with unittest.mock.patch("switchbot.Switchbot") as device_mock, caplog.at_level(
@@ -151,8 +155,8 @@ def test_execute_command_invalid_payload(
     ):
         actor = _ButtonAutomator(mac_address=mac_address, retry_count=21, password=None)
         with unittest.mock.patch.object(actor, "report_state") as report_mock:
-            actor.execute_command(
-                mqtt_client="dummy",
+            await actor.execute_command(
+                mqtt_client=unittest.mock.Mock(),
                 mqtt_message_payload=message_payload,
                 update_device_info=True,
                 mqtt_topic_prefix="dummy",
@@ -169,9 +173,10 @@ def test_execute_command_invalid_payload(
     ]
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
 @pytest.mark.parametrize("message_payload", [b"ON", b"OFF"])
-def test_execute_command_bluetooth_error(
+async def test_execute_command_bluetooth_error(
     caplog: _pytest.logging.LogCaptureFixture, mac_address: str, message_payload: bytes
 ) -> None:
     """
@@ -186,10 +191,10 @@ def test_execute_command_bluetooth_error(
             f"Failed to connect to peripheral {mac_address}, addr type: random"
         ),
     ), caplog.at_level(logging.ERROR):
-        _ButtonAutomator(
+        await _ButtonAutomator(
             mac_address=mac_address, retry_count=0, password=None
         ).execute_command(
-            mqtt_client="dummy",
+            mqtt_client=unittest.mock.Mock(),
             mqtt_message_payload=message_payload,
             update_device_info=True,
             mqtt_topic_prefix="dummy",

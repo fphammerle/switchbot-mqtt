@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - declare compatibility with `python3.11`
 
+### Changed
+- replaced [paho-mqtt](https://github.com/eclipse/paho.mqtt.python)
+  with its async wrapper [aiomqtt](https://github.com/sbtinstruments/aiomqtt)
+
 ### Removed
 - compatibility with `python3.7`
 

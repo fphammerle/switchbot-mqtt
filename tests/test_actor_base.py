@@ -35,7 +35,8 @@ def test_abstract() -> None:
         )
 
 
-def test_execute_command_abstract() -> None:
+@pytest.mark.asyncio
+async def test_execute_command_abstract() -> None:
     class _ActorMock(switchbot_mqtt._actors.base._MQTTControlledActor):
         # pylint: disable=duplicate-code
         def __init__(
@@ -45,7 +46,7 @@ def test_execute_command_abstract() -> None:
                 mac_address=mac_address, retry_count=retry_count, password=password
             )
 
-        def execute_command(
+        async def execute_command(
             self,
             *,
             mqtt_message_payload: bytes,
@@ -54,7 +55,7 @@ def test_execute_command_abstract() -> None:
             mqtt_topic_prefix: str,
         ) -> None:
             assert 21
-            super().execute_command(
+            await super().execute_command(  # type: ignore
                 mqtt_message_payload=mqtt_message_payload,
                 mqtt_client=mqtt_client,
                 update_device_info=update_device_info,
@@ -65,9 +66,18 @@ def test_execute_command_abstract() -> None:
             assert 42
             return super()._get_device()
 
+    with pytest.raises(TypeError) as exc_info:
+        # pylint: disable=abstract-class-instantiated
+        switchbot_mqtt._actors.base._MQTTControlledActor(  # type: ignore
+            mac_address="aa:bb:cc:dd:ee:ff", retry_count=42, password=None
+        )
+    exc_info.match(
+        r"^Can't instantiate abstract class _MQTTControlledActor"
+        r" with abstract methods __init__, _get_device, execute_command$"
+    )
     actor = _ActorMock(mac_address="aa:bb:cc:dd:ee:ff", retry_count=42, password=None)
     with pytest.raises(NotImplementedError):
-        actor.execute_command(
+        await actor.execute_command(
             mqtt_message_payload=b"dummy",
             mqtt_client="dummy",
             update_device_info=True,

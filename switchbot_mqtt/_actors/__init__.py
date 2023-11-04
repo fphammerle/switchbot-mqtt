@@ -20,10 +20,10 @@ import logging
 import typing
 
 import bluepy.btle
-import paho.mqtt.client
+import aiomqtt
 import switchbot
 
-from switchbot_mqtt._actors.base import _MQTTCallbackUserdata, _MQTTControlledActor
+from switchbot_mqtt._actors.base import _MQTTControlledActor
 from switchbot_mqtt._utils import (
     _join_mqtt_topic_levels,
     _MQTTTopicLevel,
@@ -69,11 +69,11 @@ class _ButtonAutomator(_MQTTControlledActor):
     def _get_device(self) -> switchbot.SwitchbotDevice:
         return self.__device
 
-    def execute_command(
+    async def execute_command(
         self,
         *,
         mqtt_message_payload: bytes,
-        mqtt_client: paho.mqtt.client.Client,
+        mqtt_client: aiomqtt.Client,
         update_device_info: bool,
         mqtt_topic_prefix: str,
     ) -> None:
@@ -84,26 +84,30 @@ class _ButtonAutomator(_MQTTControlledActor):
             else:
                 _LOGGER.info("switchbot %s turned on", self._mac_address)
                 # https://www.home-assistant.io/integrations/switch.mqtt/#state_on
-                self.report_state(
+                await self.report_state(
                     mqtt_client=mqtt_client,
                     mqtt_topic_prefix=mqtt_topic_prefix,
                     state=b"ON",
                 )
                 if update_device_info:
-                    self._update_and_report_device_info(mqtt_client, mqtt_topic_prefix)
+                    await self._update_and_report_device_info(
+                        mqtt_client, mqtt_topic_prefix
+                    )
         # https://www.home-assistant.io/integrations/switch.mqtt/#payload_off
         elif mqtt_message_payload.lower() == b"off":
             if not self.__device.turn_off():
                 _LOGGER.error("failed to turn off switchbot %s", self._mac_address)
             else:
                 _LOGGER.info("switchbot %s turned off", self._mac_address)
-                self.report_state(
+                await self.report_state(
                     mqtt_client=mqtt_client,
                     mqtt_topic_prefix=mqtt_topic_prefix,
                     state=b"OFF",
                 )
                 if update_device_info:
-                    self._update_and_report_device_info(mqtt_client, mqtt_topic_prefix)
+                    await self._update_and_report_device_info(
+                        mqtt_client, mqtt_topic_prefix
+                    )
         else:
             _LOGGER.warning(
                 "unexpected payload %r (expected 'ON' or 'OFF')", mqtt_message_payload
@@ -154,9 +158,9 @@ class _CurtainMotor(_MQTTControlledActor):
     def _get_device(self) -> switchbot.SwitchbotDevice:
         return self.__device
 
-    def _report_position(
+    async def _report_position(
         self,
-        mqtt_client: paho.mqtt.client.Client,  # pylint: disable=duplicate-code; similar param list
+        mqtt_client: aiomqtt.Client,  # pylint: disable=duplicate-code; similar param list
         mqtt_topic_prefix: str,
     ) -> None:
         # > position_closed integer (Optional, default: 0)
@@ -166,31 +170,31 @@ class _CurtainMotor(_MQTTControlledActor):
         # SwitchbotCurtain.open() and .close() update the position optimistically,
         # SwitchbotCurtain.update() fetches the real position via bluetooth.
         # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L202
-        self._mqtt_publish(
+        await self._mqtt_publish(
             topic_prefix=mqtt_topic_prefix,
             topic_levels=self._MQTT_POSITION_TOPIC_LEVELS,
             payload=str(int(self.__device.get_position())).encode(),
             mqtt_client=mqtt_client,
         )
 
-    def _update_and_report_device_info(  # pylint: disable=arguments-differ; report_position is optional
+    async def _update_and_report_device_info(  # pylint: disable=arguments-differ; report_position is optional
         self,
-        mqtt_client: paho.mqtt.client.Client,
+        mqtt_client: aiomqtt.Client,
         mqtt_topic_prefix: str,
         *,
         report_position: bool = True,
     ) -> None:
-        super()._update_and_report_device_info(mqtt_client, mqtt_topic_prefix)
+        await super()._update_and_report_device_info(mqtt_client, mqtt_topic_prefix)
         if report_position:
-            self._report_position(
+            await self._report_position(
                 mqtt_client=mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix
             )
 
-    def execute_command(
+    async def execute_command(
         self,
         *,
         mqtt_message_payload: bytes,
-        mqtt_client: paho.mqtt.client.Client,
+        mqtt_client: aiomqtt.Client,
         update_device_info: bool,
         mqtt_topic_prefix: str,
     ) -> None:
@@ -203,7 +207,7 @@ class _CurtainMotor(_MQTTControlledActor):
                 _LOGGER.info("switchbot curtain %s opening", self._mac_address)
                 # > state_opening string (Optional, default: opening)
                 # https://www.home-assistant.io/integrations/cover.mqtt/#state_opening
-                self.report_state(
+                await self.report_state(
                     mqtt_client=mqtt_client,
                     mqtt_topic_prefix=mqtt_topic_prefix,
                     state=b"opening",
@@ -215,7 +219,7 @@ class _CurtainMotor(_MQTTControlledActor):
             else:
                 _LOGGER.info("switchbot curtain %s closing", self._mac_address)
                 # https://www.home-assistant.io/integrations/cover.mqtt/#state_closing
-                self.report_state(
+                await self.report_state(
                     mqtt_client=mqtt_client,
                     mqtt_topic_prefix=mqtt_topic_prefix,
                     state=b"closing",
@@ -229,7 +233,7 @@ class _CurtainMotor(_MQTTControlledActor):
                 # no "stopped" state mentioned at
                 # https://www.home-assistant.io/integrations/cover.mqtt/#configuration-variables
                 # https://community.home-assistant.io/t/mqtt-how-to-remove-retained-messages/79029/2
-                self.report_state(
+                await self.report_state(
                     mqtt_client=mqtt_client,
                     mqtt_topic_prefix=mqtt_topic_prefix,
                     state=b"",
@@ -242,18 +246,22 @@ class _CurtainMotor(_MQTTControlledActor):
                 mqtt_message_payload,
             )
         if report_device_info:
-            self._update_and_report_device_info(
+            await self._update_and_report_device_info(
                 mqtt_client=mqtt_client,
                 mqtt_topic_prefix=mqtt_topic_prefix,
                 report_position=report_position,
             )
 
     @classmethod
-    def _mqtt_set_position_callback(
+    async def _mqtt_set_position_callback(
         cls,
-        mqtt_client: paho.mqtt.client.Client,
-        userdata: _MQTTCallbackUserdata,
-        message: paho.mqtt.client.MQTTMessage,
+        *,
+        mqtt_client: aiomqtt.Client,
+        message: aiomqtt.Message,
+        mqtt_topic_prefix: str,
+        retry_count: int,
+        device_passwords: typing.Dict[str, str],
+        fetch_device_info: bool,
     ) -> None:
         # pylint: disable=unused-argument; callback
         # https://github.com/eclipse/paho.mqtt.python/blob/v1.6.1/src/paho/mqtt/client.py#L3556
@@ -263,11 +271,14 @@ class _CurtainMotor(_MQTTControlledActor):
             return
         actor = cls._init_from_topic(
             topic=message.topic,
+            mqtt_topic_prefix=mqtt_topic_prefix,
             expected_topic_levels=cls._MQTT_SET_POSITION_TOPIC_LEVELS,
-            settings=userdata,
+            retry_count=retry_count,
+            device_passwords=device_passwords,
         )
         if not actor:
             return  # warning in _init_from_topic
+        assert isinstance(message.payload, bytes), message.payload
         position_percent = int(message.payload.decode(), 10)
         if position_percent < 0 or position_percent > 100:
             _LOGGER.warning("invalid position %u%%, ignoring message", position_percent)

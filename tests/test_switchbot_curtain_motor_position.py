@@ -19,34 +19,34 @@
 import logging
 import unittest.mock
 
+import aiomqtt
 import _pytest.logging  # pylint: disable=import-private-name; typing
 import pytest
-from paho.mqtt.client import MQTTMessage
 
 # pylint: disable=import-private-name; internal
 from switchbot_mqtt._actors import _CurtainMotor
-from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
 
 # pylint: disable=protected-access
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("topic", "payload", "expected_mac_address", "expected_position_percent"),
     [
         (
-            b"home/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
+            "home/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
             b"42",
             "aa:bb:cc:dd:ee:ff",
             42,
         ),
         (
-            b"home/cover/switchbot-curtain/11:22:33:44:55:66/position/set-percent",
+            "home/cover/switchbot-curtain/11:22:33:44:55:66/position/set-percent",
             b"0",
             "11:22:33:44:55:66",
             0,
         ),
         (
-            b"home/cover/switchbot-curtain/11:22:33:44:55:66/position/set-percent",
+            "home/cover/switchbot-curtain/11:22:33:44:55:66/position/set-percent",
             b"100",
             "11:22:33:44:55:66",
             100,
@@ -54,27 +54,27 @@ from switchbot_mqtt._actors.base import _MQTTCallbackUserdata
     ],
 )
 @pytest.mark.parametrize("retry_count", (3, 42))
-def test__mqtt_set_position_callback(
+async def test__mqtt_set_position_callback(
     caplog: _pytest.logging.LogCaptureFixture,
-    topic: bytes,
+    topic: str,
     payload: bytes,
     expected_mac_address: str,
     retry_count: int,
     expected_position_percent: int,
 ) -> None:
-    callback_userdata = _MQTTCallbackUserdata(
-        retry_count=retry_count,
-        device_passwords={},
-        fetch_device_info=False,
-        mqtt_topic_prefix="home/",
+    message = aiomqtt.Message(
+        topic=topic, payload=payload, qos=0, retain=False, mid=0, properties=None
     )
-    message = MQTTMessage(topic=topic)
-    message.payload = payload
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
     ) as device_init_mock, caplog.at_level(logging.DEBUG):
-        _CurtainMotor._mqtt_set_position_callback(
-            mqtt_client="client dummy", userdata=callback_userdata, message=message
+        await _CurtainMotor._mqtt_set_position_callback(
+            mqtt_client=unittest.mock.Mock(),
+            message=message,
+            retry_count=retry_count,
+            device_passwords={},
+            fetch_device_info=False,
+            mqtt_topic_prefix="home/",
         )
     device_init_mock.assert_called_once_with(
         mac=expected_mac_address,
@@ -99,25 +99,28 @@ def test__mqtt_set_position_callback(
     ]
 
 
-def test__mqtt_set_position_callback_ignore_retained(
+@pytest.mark.asyncio
+async def test__mqtt_set_position_callback_ignore_retained(
     caplog: _pytest.logging.LogCaptureFixture,
 ) -> None:
-    callback_userdata = _MQTTCallbackUserdata(
-        retry_count=3,
-        device_passwords={},
-        fetch_device_info=False,
-        mqtt_topic_prefix="whatever",
+    message = aiomqtt.Message(
+        topic="homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
+        payload=b"42",
+        qos=0,
+        retain=True,
+        mid=0,
+        properties=None,
     )
-    message = MQTTMessage(
-        topic=b"homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent"
-    )
-    message.payload = b"42"
-    message.retain = True
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
     ) as device_init_mock, caplog.at_level(logging.INFO):
-        _CurtainMotor._mqtt_set_position_callback(
-            mqtt_client="client dummy", userdata=callback_userdata, message=message
+        await _CurtainMotor._mqtt_set_position_callback(
+            mqtt_client=unittest.mock.Mock(),
+            message=message,
+            retry_count=3,
+            device_passwords={},
+            fetch_device_info=False,
+            mqtt_topic_prefix="whatever",
         )
     device_init_mock.assert_not_called()
     assert caplog.record_tuples == [
@@ -130,22 +133,28 @@ def test__mqtt_set_position_callback_ignore_retained(
     ]
 
 
-def test__mqtt_set_position_callback_unexpected_topic(
+@pytest.mark.asyncio
+async def test__mqtt_set_position_callback_unexpected_topic(
     caplog: _pytest.logging.LogCaptureFixture,
 ) -> None:
-    callback_userdata = _MQTTCallbackUserdata(
-        retry_count=3,
-        device_passwords={},
-        fetch_device_info=False,
-        mqtt_topic_prefix="",
+    message = aiomqtt.Message(
+        topic="switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set",
+        payload=b"42",
+        qos=0,
+        retain=False,
+        mid=0,
+        properties=None,
     )
-    message = MQTTMessage(topic=b"switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set")
-    message.payload = b"42"
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
     ) as device_init_mock, caplog.at_level(logging.INFO):
-        _CurtainMotor._mqtt_set_position_callback(
-            mqtt_client="client dummy", userdata=callback_userdata, message=message
+        await _CurtainMotor._mqtt_set_position_callback(
+            mqtt_client=unittest.mock.Mock(),
+            message=message,
+            retry_count=3,
+            device_passwords={},
+            fetch_device_info=False,
+            mqtt_topic_prefix="",
         )
     device_init_mock.assert_not_called()
     assert caplog.record_tuples == [
@@ -157,24 +166,28 @@ def test__mqtt_set_position_callback_unexpected_topic(
     ]
 
 
-def test__mqtt_set_position_callback_invalid_mac_address(
+@pytest.mark.asyncio
+async def test__mqtt_set_position_callback_invalid_mac_address(
     caplog: _pytest.logging.LogCaptureFixture,
 ) -> None:
-    callback_userdata = _MQTTCallbackUserdata(
-        retry_count=3,
-        device_passwords={},
-        fetch_device_info=False,
-        mqtt_topic_prefix="tnatsissaemoh/",
+    message = aiomqtt.Message(
+        topic="tnatsissaemoh/cover/switchbot-curtain/aa:bb:cc:dd:ee/position/set-percent",
+        payload=b"42",
+        qos=0,
+        retain=False,
+        mid=0,
+        properties=None,
     )
-    message = MQTTMessage(
-        topic=b"tnatsissaemoh/cover/switchbot-curtain/aa:bb:cc:dd:ee/position/set-percent"
-    )
-    message.payload = b"42"
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
     ) as device_init_mock, caplog.at_level(logging.INFO):
-        _CurtainMotor._mqtt_set_position_callback(
-            mqtt_client="client dummy", userdata=callback_userdata, message=message
+        await _CurtainMotor._mqtt_set_position_callback(
+            mqtt_client=unittest.mock.Mock(),
+            message=message,
+            retry_count=3,
+            device_passwords={},
+            fetch_device_info=False,
+            mqtt_topic_prefix="tnatsissaemoh/",
         )
     device_init_mock.assert_not_called()
     assert caplog.record_tuples == [
@@ -186,26 +199,30 @@ def test__mqtt_set_position_callback_invalid_mac_address(
     ]
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("payload", [b"-1", b"123"])
-def test__mqtt_set_position_callback_invalid_position(
+async def test__mqtt_set_position_callback_invalid_position(
     caplog: _pytest.logging.LogCaptureFixture,
     payload: bytes,
 ) -> None:
-    callback_userdata = _MQTTCallbackUserdata(
-        retry_count=3,
-        device_passwords={},
-        fetch_device_info=False,
-        mqtt_topic_prefix="homeassistant/",
+    message = aiomqtt.Message(
+        topic="homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
+        payload=payload,
+        qos=0,
+        retain=False,
+        mid=0,
+        properties=None,
     )
-    message = MQTTMessage(
-        topic=b"homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent"
-    )
-    message.payload = payload
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
     ) as device_init_mock, caplog.at_level(logging.INFO):
-        _CurtainMotor._mqtt_set_position_callback(
-            mqtt_client="client dummy", userdata=callback_userdata, message=message
+        await _CurtainMotor._mqtt_set_position_callback(
+            mqtt_client=unittest.mock.Mock(),
+            message=message,
+            retry_count=3,
+            device_passwords={},
+            fetch_device_info=False,
+            mqtt_topic_prefix="homeassistant/",
         )
     device_init_mock.assert_called_once()
     device_init_mock().set_position.assert_not_called()
@@ -218,26 +235,30 @@ def test__mqtt_set_position_callback_invalid_position(
     ]
 
 
-def test__mqtt_set_position_callback_command_failed(
+@pytest.mark.asyncio
+async def test__mqtt_set_position_callback_command_failed(
     caplog: _pytest.logging.LogCaptureFixture,
 ) -> None:
-    callback_userdata = _MQTTCallbackUserdata(
-        retry_count=3,
-        device_passwords={},
-        fetch_device_info=False,
-        mqtt_topic_prefix="",
+    message = aiomqtt.Message(
+        topic="cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
+        payload=b"21",
+        qos=0,
+        retain=False,
+        mid=0,
+        properties=None,
     )
-    message = MQTTMessage(
-        topic=b"cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent"
-    )
-    message.payload = b"21"
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
     ) as device_init_mock, caplog.at_level(logging.INFO):
         device_init_mock().set_position.return_value = False
         device_init_mock.reset_mock()
-        _CurtainMotor._mqtt_set_position_callback(
-            mqtt_client="client dummy", userdata=callback_userdata, message=message
+        await _CurtainMotor._mqtt_set_position_callback(
+            mqtt_client=unittest.mock.Mock(),
+            message=message,
+            retry_count=3,
+            device_passwords={},
+            fetch_device_info=False,
+            mqtt_topic_prefix="",
         )
     device_init_mock.assert_called_once()
     device_init_mock().set_position.assert_called_with(21)
