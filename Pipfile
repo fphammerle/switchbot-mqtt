@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 switchbot-mqtt = {editable = true, path = "."}
 
+# remove marker breaking pipeline on python>3.9
+typing-extensions = {markers = ""}
+
 [dev-packages]
 black = "*"
 mypy = "*"
