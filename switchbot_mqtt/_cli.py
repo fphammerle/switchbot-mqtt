@@ -22,7 +22,6 @@ import json
 import logging
 import os
 import pathlib
-import warnings
 
 import switchbot
 
@@ -44,17 +43,9 @@ def _main() -> None:
     argparser.add_argument(
         "--mqtt-port",
         type=int,
-        help=f"default {_MQTT_DEFAULT_PORT} ({_MQTT_DEFAULT_TLS_PORT} with --mqtt-enable-tls)",
+        help=f"default {_MQTT_DEFAULT_TLS_PORT} ({_MQTT_DEFAULT_PORT} with --mqtt-disable-tls)",
     )
-    mqtt_tls_argument_group = argparser.add_mutually_exclusive_group()
-    mqtt_tls_argument_group.add_argument(
-        "--mqtt-enable-tls",
-        action="store_true",
-        help="TLS will be enabled by default in the next major release",
-    )
-    mqtt_tls_argument_group.add_argument(  # for upward compatibility
-        "--mqtt-disable-tls", action="store_true", help="Currently enabled by default"
-    )
+    argparser.add_argument("--mqtt-disable-tls", action="store_true")
     argparser.add_argument("--mqtt-username", type=str)
     password_argument_group = argparser.add_mutually_exclusive_group()
     password_argument_group.add_argument("--mqtt-password", type=str)
@@ -129,17 +120,10 @@ def _main() -> None:
     _LOGGER.debug("args=%r", args)
     if args.mqtt_port:
         mqtt_port = args.mqtt_port
-    elif args.mqtt_enable_tls:
-        mqtt_port = _MQTT_DEFAULT_TLS_PORT
-    else:
+    elif args.mqtt_disable_tls:
         mqtt_port = _MQTT_DEFAULT_PORT
-    if not args.mqtt_enable_tls and not args.mqtt_disable_tls:
-        warnings.warn(
-            "In switchbot-mqtt's next major release, TLS will be enabled by default"
-            " (--mqtt-enable-tls)."
-            " Please add --mqtt-disable-tls to your command for upward compatibility.",
-            UserWarning,  # DeprecationWarning ignored by default
-        )
+    else:
+        mqtt_port = _MQTT_DEFAULT_TLS_PORT
     if args.mqtt_password_path:
         # .read_text() replaces \r\n with \n
         mqtt_password = args.mqtt_password_path.read_bytes().decode()
@@ -159,7 +143,7 @@ def _main() -> None:
         switchbot_mqtt._run(  # pylint: disable=protected-access; internal
             mqtt_host=args.mqtt_host,
             mqtt_port=mqtt_port,
-            mqtt_disable_tls=not args.mqtt_enable_tls,
+            mqtt_disable_tls=args.mqtt_disable_tls,
             mqtt_username=args.mqtt_username,
             mqtt_password=mqtt_password,
             mqtt_topic_prefix=args.mqtt_topic_prefix,

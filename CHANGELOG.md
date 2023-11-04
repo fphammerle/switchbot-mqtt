@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - declare compatibility with `python3.11`
 
 ### Changed
+- TLS now enabled by default (disable via `--mqtt-disable-tls`)
 - replaced [paho-mqtt](https://github.com/eclipse/paho.mqtt.python)
   with its async wrapper [aiomqtt](https://github.com/sbtinstruments/aiomqtt)
 
 ### Removed
+- command-line option `--mqtt-enable-tls` (TLS now enabled by default)
 - compatibility with `python3.7`
 
 ## [3.3.1] - 2022-08-31
