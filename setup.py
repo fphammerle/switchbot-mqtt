@@ -65,7 +65,6 @@ setuptools.setup(
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: POSIX :: Linux",
         # .github/workflows/python.yml
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
@@ -75,7 +74,11 @@ setuptools.setup(
     # >=3.6 variable type hints, f-strings, typing.Collection & * to force keyword-only arguments
     # >=3.7 postponed evaluation of type annotations (PEP563) & asyncio.run
     # >=3.8 unittest.mock.AsyncMock
-    python_requires=">=3.8",
+    # <=3.8 untested cause pySwitchbot v0.17.2 added constraint bleak-retry-connector>=1.1.1
+    #       requiring python>=3.9
+    # https://web.archive.org/web/20231104212919/https://github.com/Danielhiversen/pySwitchbot/compare/0.17.1..0.17.2
+    # https://web.archive.org/web/20231104212930/https://pypi.org/project/bleak-retry-connector/1.1.1/
+    python_requires=">=3.9",
     install_requires=[
         "bleak<0.22",
         # v0.14.0 replaced bluepy with bleak

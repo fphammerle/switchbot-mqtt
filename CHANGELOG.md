@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - command-line option `--mqtt-enable-tls` (TLS now enabled by default)
 - compatibility with `python3.7`
+- compatibility with `python3.8`
+  (pySwitchbot v0.17.2 added constraint `bleak-retry-connector>=1.1.1`
+  requiring `python>=3.9`)
 
 ## [3.3.1] - 2022-08-31
 ### Fixed
