@@ -23,7 +23,7 @@ import logging
 import os
 import pathlib
 
-import switchbot
+import switchbot.const
 
 import switchbot_mqtt
 from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
@@ -74,7 +74,7 @@ def _main() -> None:
         "--retries",
         dest="retry_count",
         type=int,
-        default=switchbot.DEFAULT_RETRY_COUNT,
+        default=switchbot.const.DEFAULT_RETRY_COUNT,
         help="Maximum number of attempts to send a command to a SwitchBot device"
         " (default: %(default)d)",
     )

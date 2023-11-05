@@ -25,7 +25,6 @@ import typing
 import unittest.mock
 
 import _pytest.logging  # pylint: disable=import-private-name; typing
-import bluepy.btle
 import pytest
 
 # pylint: disable=import-private-name; internal
@@ -49,15 +48,17 @@ def test_get_mqtt_battery_percentage_topic(prefix: str, mac_address: str) -> Non
 async def test__update_and_report_device_info(
     topic_prefix: str, battery_percent: int, battery_percent_encoded: bytes
 ) -> None:
-    with unittest.mock.patch("switchbot.SwitchbotCurtain.__init__", return_value=None):
-        actor = _ButtonAutomator(mac_address="dummy", retry_count=21, password=None)
-    actor._get_device()._switchbot_device_data = {"data": {"battery": battery_percent}}
+    device = unittest.mock.Mock()
+    device.address = "dummy"
+    with unittest.mock.patch("switchbot.Switchbot.__init__", return_value=None):
+        actor = _ButtonAutomator(device=device, retry_count=21, password=None)
+    actor._get_device().get_basic_info = unittest.mock.AsyncMock(
+        return_value={"battery": battery_percent}
+    )
     mqtt_client_mock = unittest.mock.AsyncMock()
-    with unittest.mock.patch("switchbot.Switchbot.update") as update_mock:
-        await actor._update_and_report_device_info(
-            mqtt_client=mqtt_client_mock, mqtt_topic_prefix=topic_prefix
-        )
-    update_mock.assert_called_once_with()
+    await actor._update_and_report_device_info(
+        mqtt_client=mqtt_client_mock, mqtt_topic_prefix=topic_prefix
+    )
     mqtt_client_mock.publish.assert_awaited_once_with(
         topic=f"{topic_prefix}switch/switchbot/dummy/battery-percentage",
         payload=battery_percent_encoded,
@@ -94,11 +95,14 @@ async def test_execute_command(
     update_device_info: bool,
     command_successful: bool,
 ) -> None:
+    # pylint: disable=too-many-locals
+    device = unittest.mock.Mock()
+    device.address = mac_address
     with unittest.mock.patch(
         "switchbot.Switchbot.__init__", return_value=None
     ) as device_init_mock, caplog.at_level(logging.INFO):
         actor = _ButtonAutomator(
-            mac_address=mac_address, retry_count=retry_count, password=password
+            device=device, retry_count=retry_count, password=password
         )
         mqtt_client = unittest.mock.Mock()
         with unittest.mock.patch.object(
@@ -115,9 +119,9 @@ async def test_execute_command(
                 mqtt_topic_prefix=topic_prefix,
             )
     device_init_mock.assert_called_once_with(
-        mac=mac_address, password=password, retry_count=retry_count
+        device=device, password=password, retry_count=retry_count
     )
-    action_mock.assert_called_once_with()
+    action_mock.assert_awaited_once_with()
     if command_successful:
         assert caplog.record_tuples == [
             (
@@ -126,12 +130,12 @@ async def test_execute_command(
                 f"switchbot {mac_address} turned {message_payload.decode().lower()}",
             )
         ]
-        report_mock.assert_called_once_with(
+        report_mock.assert_awaited_once_with(
             mqtt_client=mqtt_client,
             mqtt_topic_prefix=topic_prefix,
             state=message_payload.upper(),
         )
-        assert update_device_info_mock.call_count == (1 if update_device_info else 0)
+        assert update_device_info_mock.await_count == (1 if update_device_info else 0)
     else:
         assert caplog.record_tuples == [
             (
@@ -150,10 +154,12 @@ async def test_execute_command(
 async def test_execute_command_invalid_payload(
     caplog: _pytest.logging.LogCaptureFixture, mac_address: str, message_payload: bytes
 ) -> None:
+    device = unittest.mock.Mock()
+    device.address = mac_address
     with unittest.mock.patch("switchbot.Switchbot") as device_mock, caplog.at_level(
         logging.INFO
     ):
-        actor = _ButtonAutomator(mac_address=mac_address, retry_count=21, password=None)
+        actor = _ButtonAutomator(device=device, retry_count=21, password=None)
         with unittest.mock.patch.object(actor, "report_state") as report_mock:
             await actor.execute_command(
                 mqtt_client=unittest.mock.Mock(),
@@ -161,7 +167,7 @@ async def test_execute_command_invalid_payload(
                 update_device_info=True,
                 mqtt_topic_prefix="dummy",
             )
-    device_mock.assert_called_once_with(mac=mac_address, retry_count=21, password=None)
+    device_mock.assert_called_once_with(device=device, retry_count=21, password=None)
     assert not device_mock().mock_calls  # no methods called
     report_mock.assert_not_called()
     assert caplog.record_tuples == [
@@ -171,43 +177,3 @@ async def test_execute_command_invalid_payload(
             f"unexpected payload {message_payload!r} (expected 'ON' or 'OFF')",
         )
     ]
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mac_address", ["aa:bb:cc:dd:ee:ff"])
-@pytest.mark.parametrize("message_payload", [b"ON", b"OFF"])
-async def test_execute_command_bluetooth_error(
-    caplog: _pytest.logging.LogCaptureFixture, mac_address: str, message_payload: bytes
-) -> None:
-    """
-    paho.mqtt.python>=1.5.1 no longer implicitly suppresses exceptions in callbacks.
-    verify pySwitchbot catches exceptions raised in bluetooth stack.
-    https://github.com/Danielhiversen/pySwitchbot/blob/0.8.0/switchbot/__init__.py#L48
-    https://github.com/Danielhiversen/pySwitchbot/blob/0.8.0/switchbot/__init__.py#L94
-    """
-    with unittest.mock.patch(
-        "bluepy.btle.Peripheral",
-        side_effect=bluepy.btle.BTLEDisconnectError(
-            f"Failed to connect to peripheral {mac_address}, addr type: random"
-        ),
-    ), caplog.at_level(logging.ERROR):
-        await _ButtonAutomator(
-            mac_address=mac_address, retry_count=0, password=None
-        ).execute_command(
-            mqtt_client=unittest.mock.Mock(),
-            mqtt_message_payload=message_payload,
-            update_device_info=True,
-            mqtt_topic_prefix="dummy",
-        )
-    assert len(caplog.records) == 2
-    assert caplog.records[0].name == "switchbot"
-    assert caplog.records[0].levelno == logging.ERROR
-    assert caplog.records[0].msg.startswith(
-        # pySwitchbot<0.11 had '.' suffix
-        "Switchbot communication failed. Stopping trying",
-    )
-    assert caplog.record_tuples[1] == (
-        "switchbot_mqtt._actors",
-        logging.ERROR,
-        f"failed to turn {message_payload.decode().lower()} switchbot {mac_address}",
-    )

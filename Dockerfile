@@ -1,8 +1,8 @@
 # sync with https://github.com/fphammerle/systemctl-mqtt/blob/master/Dockerfile
 
 # not using python:3.*-alpine cause glib-dev package depends on python3
-# https://pkgs.alpinelinux.org/package/v3.11/main/aarch64/glib-dev
-ARG BASE_IMAGE=docker.io/alpine:3.13.1
+# https://pkgs.alpinelinux.org/package/v3.18/main/aarch64/glib-dev
+ARG BASE_IMAGE=docker.io/alpine:3.18.4
 ARG SOURCE_DIR_PATH=/switchbot-mqtt
 
 
@@ -10,19 +10,23 @@ ARG SOURCE_DIR_PATH=/switchbot-mqtt
 FROM $BASE_IMAGE as build
 
 RUN apk add --no-cache \
+        cargo `# cryptography build` \
         gcc \
         git `# setuptools_scm` \
         glib-dev \
         jq `# edit Pipfile.lock` \
         make \
         musl-dev \
+        openssl-dev `# cryptography build` \
         py3-certifi `# pipenv` \
         py3-pip `# pipenv install` \
         py3-virtualenv `# pipenv` \
+        python3-dev `# Python.h for cffi build` \
+        rust `# cryptography build` \
     && adduser -S build
 
 USER build
-RUN pip3 install --user --no-cache-dir pipenv==2021.5.29
+RUN pip3 install --user --no-cache-dir pipenv==2023.6.18
 
 ARG SOURCE_DIR_PATH
 COPY --chown=build:nobody Pipfile Pipfile.lock $SOURCE_DIR_PATH/
@@ -33,9 +37,10 @@ ENV PIPENV_CACHE_DIR=/tmp/pipenv-cache \
 # `sponge` is not pre-installed
 RUN jq 'del(.default."switchbot-mqtt", .default."sanitized-package")' Pipfile.lock > Pipfile.lock~ \
     && mv Pipfile.lock~ Pipfile.lock \
-    && pipenv install --deploy --verbose
+    && pipenv install --deploy
 COPY --chown=build:nobody . $SOURCE_DIR_PATH
-RUN pipenv install --deploy --verbose \
+RUN if ! git status; then export SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0; fi \
+    && pipenv install --deploy \
     && pipenv graph \
     && pipenv run pip freeze \
     && rm -rf .git/ $PIPENV_CACHE_DIR \

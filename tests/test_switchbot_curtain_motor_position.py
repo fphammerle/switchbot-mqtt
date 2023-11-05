@@ -20,6 +20,7 @@ import logging
 import unittest.mock
 
 import aiomqtt
+import bleak
 import _pytest.logging  # pylint: disable=import-private-name; typing
 import pytest
 
@@ -65,9 +66,17 @@ async def test__mqtt_set_position_callback(
     message = aiomqtt.Message(
         topic=topic, payload=payload, qos=0, retain=False, mid=0, properties=None
     )
-    with unittest.mock.patch(
-        "switchbot.SwitchbotCurtain"
-    ) as device_init_mock, caplog.at_level(logging.DEBUG):
+    device = unittest.mock.Mock()
+    device.address = expected_mac_address
+    with unittest.mock.patch.object(
+        bleak.BleakScanner, "find_device_by_address", return_value=device
+    ), unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.__init__", return_value=None
+    ) as device_init_mock, unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.set_position"
+    ) as set_position_mock, caplog.at_level(
+        logging.DEBUG
+    ):
         await _CurtainMotor._mqtt_set_position_callback(
             mqtt_client=unittest.mock.Mock(),
             message=message,
@@ -77,12 +86,9 @@ async def test__mqtt_set_position_callback(
             mqtt_topic_prefix="home/",
         )
     device_init_mock.assert_called_once_with(
-        mac=expected_mac_address,
-        password=None,
-        retry_count=retry_count,
-        reverse_mode=True,
+        device=device, password=None, retry_count=retry_count, reverse_mode=True
     )
-    device_init_mock().set_position.assert_called_once_with(expected_position_percent)
+    set_position_mock.assert_called_once_with(expected_position_percent)
     assert caplog.record_tuples == [
         (
             "switchbot_mqtt._actors",
@@ -213,9 +219,13 @@ async def test__mqtt_set_position_callback_invalid_position(
         mid=0,
         properties=None,
     )
-    with unittest.mock.patch(
+    with unittest.mock.patch.object(
+        bleak.BleakScanner, "find_device_by_address"
+    ), unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
-    ) as device_init_mock, caplog.at_level(logging.INFO):
+    ) as device_init_mock, caplog.at_level(
+        logging.INFO
+    ):
         await _CurtainMotor._mqtt_set_position_callback(
             mqtt_client=unittest.mock.Mock(),
             message=message,
@@ -247,11 +257,17 @@ async def test__mqtt_set_position_callback_command_failed(
         mid=0,
         properties=None,
     )
-    with unittest.mock.patch(
-        "switchbot.SwitchbotCurtain"
-    ) as device_init_mock, caplog.at_level(logging.INFO):
-        device_init_mock().set_position.return_value = False
-        device_init_mock.reset_mock()
+    device = unittest.mock.Mock()
+    device.address = "aa:bb:cc:dd:ee:ff"
+    with unittest.mock.patch.object(
+        bleak.BleakScanner, "find_device_by_address", return_value=device
+    ), unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.__init__", return_value=None
+    ) as device_init_mock, unittest.mock.patch(
+        "switchbot.SwitchbotCurtain.set_position", return_value=False
+    ) as set_position_mock, caplog.at_level(
+        logging.INFO
+    ):
         await _CurtainMotor._mqtt_set_position_callback(
             mqtt_client=unittest.mock.Mock(),
             message=message,
@@ -261,7 +277,7 @@ async def test__mqtt_set_position_callback_command_failed(
             mqtt_topic_prefix="",
         )
     device_init_mock.assert_called_once()
-    device_init_mock().set_position.assert_called_with(21)
+    set_position_mock.assert_awaited_with(21)
     assert caplog.record_tuples == [
         (
             "switchbot_mqtt._actors",

@@ -27,12 +27,11 @@ from __future__ import annotations  # PEP563 (default in python>=3.10)
 
 import abc
 import logging
-import queue
-import shlex
 import typing
 
 import aiomqtt
-import bluepy.btle
+import bleak
+import bleak.backends.device
 import switchbot
 from switchbot_mqtt._utils import (
     _join_mqtt_topic_levels,
@@ -40,7 +39,6 @@ from switchbot_mqtt._utils import (
     _MQTTTopicLevel,
     _MQTTTopicPlaceholder,
     _parse_mqtt_topic,
-    _QueueLogHandler,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,76 +72,48 @@ class _MQTTControlledActor(abc.ABC):
 
     @abc.abstractmethod
     def __init__(
-        self, *, mac_address: str, retry_count: int, password: typing.Optional[str]
+        self,
+        *,
+        device: bleak.backends.device.BLEDevice,
+        retry_count: int,
+        password: typing.Optional[str],
     ) -> None:
         # alternative: pySwitchbot >=0.10.0 provides SwitchbotDevice.get_mac()
-        self._mac_address = mac_address
+        self._mac_address = device.address
+        self._basic_device_info: typing.Optional[typing.Dict[str, typing.Any]] = None
 
     @abc.abstractmethod
     def _get_device(self) -> switchbot.SwitchbotDevice:
         raise NotImplementedError()
 
-    def _update_device_info(self) -> None:
-        log_queue: queue.Queue[logging.LogRecord] = queue.Queue(maxsize=0)
-        logging.getLogger("switchbot").addHandler(_QueueLogHandler(log_queue))
-        try:
-            self._get_device().update()
-            # pySwitchbot>=v0.10.1 catches bluepy.btle.BTLEManagementError :(
-            # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.1/switchbot/__init__.py#L141
-            # pySwitchbot<0.11.0 WARNING, >=0.11.0 ERROR
-            while not log_queue.empty():
-                log_record = log_queue.get()
-                if log_record.exc_info:
-                    exc: typing.Optional[BaseException] = log_record.exc_info[1]
-                    if (
-                        isinstance(exc, bluepy.btle.BTLEManagementError)
-                        and exc.emsg == "Permission Denied"
-                    ):
-                        raise exc
-        except bluepy.btle.BTLEManagementError as exc:
-            if (
-                exc.emsg == "Permission Denied"
-                and exc.message == "Failed to execute management command 'le on'"
-            ):
-                raise PermissionError(
-                    "bluepy-helper failed to enable low energy mode"
-                    " due to insufficient permissions."
-                    "\nSee https://github.com/IanHarvey/bluepy/issues/313#issuecomment-428324639"
-                    ", https://github.com/fphammerle/switchbot-mqtt/pull/31#issuecomment-846383603"
-                    ", and https://github.com/IanHarvey/bluepy/blob/v/1.3.0/bluepy"
-                    "/bluepy-helper.c#L1260."
-                    "\nInsecure workaround:"
-                    "\n1. sudo apt-get install --no-install-recommends libcap2-bin"
-                    f"\n2. sudo setcap cap_net_admin+ep {shlex.quote(bluepy.btle.helperExe)}"
-                    "\n3. restart switchbot-mqtt"
-                    "\nIn docker-based setups, you could use"
-                    " `sudo docker run --cap-drop ALL --cap-add NET_ADMIN --user 0 …`"
-                    " (seriously insecure)."
-                ) from exc
-            raise
-
     async def _report_battery_level(
         self, mqtt_client: aiomqtt.Client, mqtt_topic_prefix: str
     ) -> None:
+        assert self._basic_device_info is not None
         # > battery: Percentage of battery that is left.
         # https://www.home-assistant.io/integrations/sensor/#device-class
         await self._mqtt_publish(
             topic_prefix=mqtt_topic_prefix,
             topic_levels=self._MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS,
-            payload=str(self._get_device().get_battery_percent()).encode(),
+            payload=str(self._basic_device_info["battery"]).encode(),
             mqtt_client=mqtt_client,
         )
 
     async def _update_and_report_device_info(
         self, mqtt_client: aiomqtt.Client, mqtt_topic_prefix: str
     ) -> None:
-        self._update_device_info()
-        await self._report_battery_level(
-            mqtt_client=mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix
-        )
+        self._basic_device_info = await self._get_device().get_basic_info()
+        if self._basic_device_info is None:
+            _LOGGER.error(
+                "failed to retrieve basic device info from %s", self._mac_address
+            )
+        else:
+            await self._report_battery_level(
+                mqtt_client=mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix
+            )
 
     @classmethod
-    def _init_from_topic(
+    async def _init_from_topic(
         cls,
         *,
         topic: aiomqtt.Topic,
@@ -164,8 +134,16 @@ class _MQTTControlledActor(abc.ABC):
         if not _mac_address_valid(mac_address):
             _LOGGER.warning("invalid mac address %s", mac_address)
             return None
+        # SwitchbotBaseDevice.__init__ expects BLEDevice
+        device = await bleak.BleakScanner.find_device_by_address(mac_address)
+        if device is None:
+            _LOGGER.error(
+                "failed to find bluetooth low energy device with mac address %s",
+                mac_address,
+            )
+            return None
         return cls(
-            mac_address=mac_address,
+            device=device,
             retry_count=retry_count,
             password=device_passwords.get(mac_address, None),
         )
@@ -188,7 +166,7 @@ class _MQTTControlledActor(abc.ABC):
         if message.retain:
             _LOGGER.info("ignoring retained message")
             return
-        actor = cls._init_from_topic(
+        actor = await cls._init_from_topic(
             topic=message.topic,
             mqtt_topic_prefix=mqtt_topic_prefix,
             expected_topic_levels=cls._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS,
@@ -230,7 +208,7 @@ class _MQTTControlledActor(abc.ABC):
         if message.retain:
             _LOGGER.info("ignoring retained message")
             return
-        actor = cls._init_from_topic(
+        actor = await cls._init_from_topic(
             topic=message.topic,
             mqtt_topic_prefix=mqtt_topic_prefix,
             expected_topic_levels=cls.MQTT_COMMAND_TOPIC_LEVELS,

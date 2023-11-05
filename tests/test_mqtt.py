@@ -25,6 +25,8 @@ import unittest.mock
 import _pytest.logging  # pylint: disable=import-private-name; typing
 import pytest
 import aiomqtt
+import bleak
+import bleak.backends.device
 from paho.mqtt.client import MQTT_ERR_NO_CONN
 
 # pylint: disable=import-private-name; internal
@@ -350,11 +352,12 @@ def _mock_actor_class(
         _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = request_info_levels
 
         def __init__(
-            self, mac_address: str, retry_count: int, password: typing.Optional[str]
+            self,
+            device: bleak.backends.device.BLEDevice,
+            retry_count: int,
+            password: typing.Optional[str],
         ) -> None:
-            super().__init__(
-                mac_address=mac_address, retry_count=retry_count, password=password
-            )
+            super().__init__(device=device, retry_count=retry_count, password=password)
 
         async def execute_command(
             self,
@@ -395,7 +398,10 @@ async def test__mqtt_update_device_info_callback(
     message = aiomqtt.Message(
         topic=topic, payload=payload, qos=0, retain=False, mid=0, properties=None
     )
+    device = unittest.mock.Mock()
     with unittest.mock.patch.object(
+        bleak.BleakScanner, "find_device_by_address", return_value=device
+    ) as find_device_mock, unittest.mock.patch.object(
         ActorMock, "__init__", return_value=None
     ) as init_mock, unittest.mock.patch.object(
         ActorMock, "_update_and_report_device_info"
@@ -410,9 +416,8 @@ async def test__mqtt_update_device_info_callback(
             device_passwords={},
             fetch_device_info=True,
         )
-    init_mock.assert_called_once_with(
-        mac_address=expected_mac_address, retry_count=21, password=None
-    )
+    find_device_mock.assert_awaited_once_with(expected_mac_address)
+    init_mock.assert_called_once_with(device=device, retry_count=21, password=None)
     update_mock.assert_called_once_with(
         mqtt_client="client_dummy", mqtt_topic_prefix="prfx/"
     )
@@ -545,7 +550,11 @@ async def test__mqtt_command_callback(
     message = aiomqtt.Message(
         topic=topic, payload=payload, qos=0, retain=False, mid=0, properties=None
     )
+    device = unittest.mock.Mock()
+    device.address = expected_mac_address
     with unittest.mock.patch.object(
+        bleak.BleakScanner, "find_device_by_address", return_value=device
+    ) as find_device_mock, unittest.mock.patch.object(
         ActorMock, "__init__", return_value=None
     ) as init_mock, unittest.mock.patch.object(
         ActorMock, "execute_command"
@@ -560,8 +569,9 @@ async def test__mqtt_command_callback(
             fetch_device_info=fetch_device_info,
             mqtt_topic_prefix=topic_prefix,
         )
+    find_device_mock.assert_awaited_once_with(expected_mac_address)
     init_mock.assert_called_once_with(
-        mac_address=expected_mac_address, retry_count=retry_count, password=None
+        device=device, retry_count=retry_count, password=None
     )
     execute_command_mock.assert_awaited_once_with(
         mqtt_client="client_dummy",
@@ -601,7 +611,11 @@ async def test__mqtt_command_callback_password(
         mid=0,
         properties=None,
     )
+    device = unittest.mock.Mock()
+    device.address = mac_address
     with unittest.mock.patch.object(
+        bleak.BleakScanner, "find_device_by_address", return_value=device
+    ) as find_device_mock, unittest.mock.patch.object(
         ActorMock, "__init__", return_value=None
     ) as init_mock, unittest.mock.patch.object(
         ActorMock, "execute_command"
@@ -618,8 +632,9 @@ async def test__mqtt_command_callback_password(
             fetch_device_info=True,
             mqtt_topic_prefix="prefix-",
         )
+    find_device_mock.assert_awaited_once_with(mac_address)
     init_mock.assert_called_once_with(
-        mac_address=mac_address, retry_count=3, password=expected_password
+        device=device, retry_count=3, password=expected_password
     )
     execute_command_mock.assert_awaited_once_with(
         mqtt_client="client_dummy",
@@ -723,6 +738,52 @@ async def test__mqtt_command_callback_invalid_mac_address(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("mac_address", ["00:11:22:33:44:55", "aa:bb:cc:dd:ee:ff"])
+@pytest.mark.parametrize("payload", [b"ON"])
+async def test__mqtt_command_callback_device_not_found(
+    caplog: _pytest.logging.LogCaptureFixture, mac_address: str, payload: bytes
+) -> None:
+    ActorMock = _mock_actor_class(
+        command_topic_levels=_ButtonAutomator.MQTT_COMMAND_TOPIC_LEVELS
+    )
+    topic = f"prefix/switch/switchbot/{mac_address}/set"
+    message = aiomqtt.Message(
+        topic=topic, payload=payload, qos=0, retain=False, mid=0, properties=None
+    )
+    with unittest.mock.patch.object(
+        bleak.BleakScanner, "find_device_by_address", return_value=None
+    ), unittest.mock.patch.object(
+        ActorMock, "__init__", return_value=None
+    ) as init_mock, unittest.mock.patch.object(
+        ActorMock, "execute_command"
+    ) as execute_command_mock, caplog.at_level(
+        logging.DEBUG
+    ):
+        await ActorMock._mqtt_command_callback(
+            mqtt_client="client_dummy",
+            message=message,
+            retry_count=3,
+            device_passwords={},
+            fetch_device_info=True,
+            mqtt_topic_prefix="prefix/",
+        )
+    init_mock.assert_not_called()
+    execute_command_mock.assert_not_called()
+    assert caplog.record_tuples == [
+        (
+            "switchbot_mqtt._actors.base",
+            logging.DEBUG,
+            f"received topic={topic} payload={payload!r}",
+        ),
+        (
+            "switchbot_mqtt._actors.base",
+            logging.ERROR,
+            f"failed to find bluetooth low energy device with mac address {mac_address}",
+        ),
+    ]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("topic", "payload"),
     [("homeassistant/switch/switchbot/aa:bb:cc:dd:ee:ff/set", b"ON")],
@@ -799,11 +860,12 @@ async def test__report_state(
         MQTT_STATE_TOPIC_LEVELS = state_topic_levels
 
         def __init__(
-            self, mac_address: str, retry_count: int, password: typing.Optional[str]
+            self,
+            device: bleak.backends.device.BLEDevice,
+            retry_count: int,
+            password: typing.Optional[str],
         ) -> None:
-            super().__init__(
-                mac_address=mac_address, retry_count=retry_count, password=password
-            )
+            super().__init__(device=device, retry_count=retry_count, password=password)
 
         async def execute_command(
             self,
@@ -824,8 +886,10 @@ async def test__report_state(
         mqtt_client_mock.publish.side_effect = aiomqtt.MqttCodeError(
             MQTT_ERR_NO_CONN, "Could not publish message"
         )
+    device = unittest.mock.Mock()
+    device.address = mac_address
     with caplog.at_level(logging.DEBUG):
-        actor = _ActorMock(mac_address=mac_address, retry_count=3, password=None)
+        actor = _ActorMock(device=device, retry_count=3, password=None)
         await actor.report_state(
             state=state, mqtt_client=mqtt_client_mock, mqtt_topic_prefix=topic_prefix
         )

@@ -10,12 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - TLS now enabled by default (disable via `--mqtt-disable-tls`)
+- require `PySwitchbot>=0.14.0,<0.41` instead of `PySwitchbot>=0.10.0,<0.13`
+- `--fetch-device-info` no longer requires `CAP_NET_ADMIN`
+  (bluepy-helper replaced with bleak)
 - replaced [paho-mqtt](https://github.com/eclipse/paho.mqtt.python)
   with its async wrapper [aiomqtt](https://github.com/sbtinstruments/aiomqtt)
+- container image: upgraded alpine base image from v3.13.1 to v3.18.4
 
 ### Removed
 - command-line option `--mqtt-enable-tls` (TLS now enabled by default)
 - compatibility with `python3.7`
+- compatibility with `python3.8`
+  (pySwitchbot v0.17.2 added constraint `bleak-retry-connector>=1.1.1`
+  requiring `python>=3.9`)
 
 ## [3.3.1] - 2022-08-31
 ### Fixed
