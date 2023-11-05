@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - TLS now enabled by default (disable via `--mqtt-disable-tls`)
 - require `PySwitchbot>=0.14.0,<0.41` instead of `PySwitchbot>=0.10.0,<0.13`
+- switchbot-mqtt now requires access to the D-Bus' system socket
+  `/var/run/dbus/system_bus_socket`
+  as `bleak` controls bluetooth via BlueZ over D-Bus.
+  access to network namespace containing bluetooth interface is thus
+  no longer required.
 - `--fetch-device-info` no longer requires `CAP_NET_ADMIN`
   (bluepy-helper replaced with bleak)
 - replaced [paho-mqtt](https://github.com/eclipse/paho.mqtt.python)
