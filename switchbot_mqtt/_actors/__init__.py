@@ -120,11 +120,12 @@ class _ButtonAutomator(_MQTTControlledActor):
 class _CurtainMotor(_MQTTControlledActor):
     # https://www.home-assistant.io/integrations/cover.mqtt/
     MQTT_COMMAND_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ("set",)
-    _MQTT_SET_POSITION_TOPIC_LEVELS: typing.Tuple[
-        _MQTTTopicLevel, ...
-    ] = _CURTAIN_TOPIC_LEVELS_PREFIX + (
-        "position",
-        "set-percent",
+    _MQTT_SET_POSITION_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = (
+        _CURTAIN_TOPIC_LEVELS_PREFIX
+        + (
+            "position",
+            "set-percent",
+        )
     )
     _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + (
         "request-device-info",

@@ -112,9 +112,11 @@ def _main() -> None:
     # https://github.com/fphammerle/python-cc1101/blob/26d8122661fc4587ecc7c73df55b92d05cf98fe8/cc1101/_cli.py#L51
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(asctime)s:%(levelname)s:%(name)s:%(funcName)s:%(message)s"
-        if args.debug
-        else "%(message)s",
+        format=(
+            "%(asctime)s:%(levelname)s:%(name)s:%(funcName)s:%(message)s"
+            if args.debug
+            else "%(message)s"
+        ),
         datefmt="%Y-%m-%dT%H:%M:%S%z",
     )
     _LOGGER.debug("args=%r", args)

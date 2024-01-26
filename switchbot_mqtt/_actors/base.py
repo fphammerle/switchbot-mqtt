@@ -46,13 +46,13 @@ _LOGGER = logging.getLogger(__name__)
 
 class _MQTTControlledActor(abc.ABC):
     MQTT_COMMAND_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = NotImplemented
-    _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS: typing.Tuple[
-        _MQTTTopicLevel, ...
-    ] = NotImplemented
+    _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = (
+        NotImplemented
+    )
     MQTT_STATE_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = NotImplemented
-    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS: typing.Tuple[
-        _MQTTTopicLevel, ...
-    ] = NotImplemented
+    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = (
+        NotImplemented
+    )
 
     @classmethod
     def get_mqtt_update_device_info_topic(cls, *, prefix: str, mac_address: str) -> str:
@@ -236,9 +236,9 @@ class _MQTTControlledActor(abc.ABC):
         # https://github.com/eclipse/paho.mqtt.python/blob/v1.6.1/src/paho/mqtt/matcher.py#L19
         callbacks = {cls.MQTT_COMMAND_TOPIC_LEVELS: cls._mqtt_command_callback}
         if enable_device_info_update_topic:
-            callbacks[
-                cls._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS
-            ] = cls._mqtt_update_device_info_callback
+            callbacks[cls._MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS] = (
+                cls._mqtt_update_device_info_callback
+            )
         return callbacks
 
     @classmethod

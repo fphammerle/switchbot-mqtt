@@ -74,9 +74,11 @@ def _log_mqtt_connected(mqtt_client: aiomqtt.Client) -> None:
         # https://github.com/sbtinstruments/aiomqtt/blob/v1.2.1/aiomqtt/client.py#L1089
         _LOGGER.debug(
             "connected to MQTT broker %s:%d",
-            f"[{mqtt_broker_host}]"
-            if mqtt_socket.family == socket.AF_INET6
-            else mqtt_broker_host,
+            (
+                f"[{mqtt_broker_host}]"
+                if mqtt_socket.family == socket.AF_INET6
+                else mqtt_broker_host
+            ),
             mqtt_broker_port,
         )
 
