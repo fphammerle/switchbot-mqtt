@@ -135,7 +135,10 @@ class _MQTTControlledActor(abc.ABC):
             _LOGGER.warning("invalid mac address %s", mac_address)
             return None
         # SwitchbotBaseDevice.__init__ expects BLEDevice
-        device = await bleak.BleakScanner.find_device_by_address(mac_address)
+        # disabling mypy to workaround false-positive:
+        # > error: Missing named argument "service_uuids" for
+        # . "find_device_by_address" of "BleakScanner"  [call-arg]
+        device = await bleak.BleakScanner.find_device_by_address(mac_address)  # type: ignore
         if device is None:
             _LOGGER.error(
                 "failed to find bluetooth low energy device with mac address %s",
