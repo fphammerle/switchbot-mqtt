@@ -67,7 +67,7 @@ async def test_execute_command_abstract() -> None:
 
         def _get_device(self) -> switchbot.SwitchbotDevice:
             assert 42
-            return super()._get_device()
+            return super()._get_device()  # type: ignore
 
     with pytest.raises(TypeError) as exc_info:
         # pylint: disable=abstract-class-instantiated
