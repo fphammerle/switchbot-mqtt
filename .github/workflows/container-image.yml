@@ -17,7 +17,7 @@ jobs:
     # > will be done directly by buildkit. [...]
     # > any file mutation in the steps that precede [...] will be ignored
     # https://github.com/marketplace/actions/build-and-push-docker-images
-    - uses: docker/build-push-action@v6.9.0
+    - uses: docker/build-push-action@v6.10.0
       with:
         platforms: |
           linux/amd64
