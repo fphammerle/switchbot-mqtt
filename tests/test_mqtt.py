@@ -36,7 +36,7 @@ from switchbot_mqtt._actors import _ButtonAutomator, _CurtainMotor
 from switchbot_mqtt._actors.base import _MQTTControlledActor
 from switchbot_mqtt._utils import _MQTTTopicLevel, _MQTTTopicPlaceholder
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,too-many-positional-arguments
 # pylint: disable=too-many-arguments; these are tests, no API
 
 

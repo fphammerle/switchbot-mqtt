@@ -30,6 +30,8 @@ import pytest
 # pylint: disable=import-private-name; internal
 from switchbot_mqtt._actors import _ButtonAutomator
 
+# pylint: disable=too-many-positional-arguments; tests
+
 
 @pytest.mark.parametrize("prefix", ["homeassistant/", "prefix-", ""])
 @pytest.mark.parametrize("mac_address", ["{MAC_ADDRESS}", "aa:bb:cc:dd:ee:ff"])

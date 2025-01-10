@@ -29,7 +29,7 @@ import pytest
 import switchbot_mqtt
 import switchbot_mqtt._cli
 
-# pylint: disable=protected-access; tests
+# pylint: disable=protected-access,too-many-positional-arguments; tests
 # pylint: disable=too-many-arguments; these are tests, no API
 
 

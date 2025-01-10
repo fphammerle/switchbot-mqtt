@@ -27,7 +27,7 @@ import pytest
 import switchbot_mqtt._utils
 from switchbot_mqtt._actors import _CurtainMotor
 
-# pylint: disable=protected-access,
+# pylint: disable=protected-access,too-many-positional-arguments
 # pylint: disable=too-many-arguments; these are tests, no API
 
 

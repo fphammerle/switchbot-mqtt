@@ -27,7 +27,7 @@ import pytest
 # pylint: disable=import-private-name; internal
 from switchbot_mqtt._actors import _CurtainMotor
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,too-many-positional-arguments
 
 
 @pytest.mark.asyncio
