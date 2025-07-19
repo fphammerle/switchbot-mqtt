@@ -166,6 +166,7 @@ async def test__run(
     mqtt_client_mock.assert_called_once()
     assert not mqtt_client_mock.call_args.args
     init_kwargs = mqtt_client_mock.call_args.kwargs
+    assert isinstance(init_kwargs, dict)  # for mypy
     assert isinstance(init_kwargs.pop("tls_context"), ssl.SSLContext)
     assert init_kwargs.pop("will") == aiomqtt.Will(
         topic="home/switchbot-mqtt/status",
