@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import collections.abc
 import enum
 import queue  # pylint: disable=unused-import; in type hint
 import re
-import typing
 
 _MAC_ADDRESS_REGEX = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
 
@@ -32,13 +32,13 @@ class _MQTTTopicPlaceholder(enum.Enum):
     MAC_ADDRESS = "MAC_ADDRESS"
 
 
-_MQTTTopicLevel = typing.Union[str, _MQTTTopicPlaceholder]
+_MQTTTopicLevel = str | _MQTTTopicPlaceholder
 
 
 def _join_mqtt_topic_levels(
     *,
     topic_prefix: str,
-    topic_levels: typing.Iterable[_MQTTTopicLevel],
+    topic_levels: collections.abc.Iterable[_MQTTTopicLevel],
     mac_address: str,
 ) -> str:
     return topic_prefix + "/".join(
@@ -51,11 +51,11 @@ def _parse_mqtt_topic(
     *,
     topic: str,
     expected_prefix: str,
-    expected_levels: typing.Collection[_MQTTTopicLevel],
-) -> typing.Dict[_MQTTTopicPlaceholder, str]:
+    expected_levels: collections.abc.Collection[_MQTTTopicLevel],
+) -> dict[_MQTTTopicPlaceholder, str]:
     if not topic.startswith(expected_prefix):
         raise ValueError(f"expected topic prefix {expected_prefix}, got topic {topic}")
-    attrs: typing.Dict[_MQTTTopicPlaceholder, str] = {}
+    attrs: dict[_MQTTTopicPlaceholder, str] = {}
     topic_split = topic[len(expected_prefix) :].split("/")
     if len(topic_split) != len(expected_levels):
         raise ValueError(f"unexpected topic {topic}")

@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import collections.abc
 import logging
 import socket
 import ssl
-import typing
 import unittest.mock
 
 import _pytest.logging  # pylint: disable=import-private-name; typing
@@ -45,7 +45,7 @@ async def test__listen(caplog: _pytest.logging.LogCaptureFixture) -> None:
     mqtt_client = unittest.mock.AsyncMock()
     messages_mock = unittest.mock.AsyncMock()
 
-    async def _msg_iter() -> typing.AsyncIterator[aiomqtt.Message]:
+    async def _msg_iter() -> collections.abc.AsyncIterator[aiomqtt.Message]:
         for topic, payload in [
             ("/foo", b"foo1"),
             ("/baz/21/bar", b"42/2"),
@@ -110,7 +110,7 @@ async def test__listen(caplog: _pytest.logging.LogCaptureFixture) -> None:
 def test__log_mqtt_connected(
     caplog: _pytest.logging.LogCaptureFixture,
     socket_family: int,  # socket.AddressFamily,
-    peername: typing.Tuple[typing.Union[str, int]],
+    peername: tuple[str | int],
     peername_log: str,
 ) -> None:
     mqtt_client = unittest.mock.MagicMock()
@@ -142,7 +142,7 @@ async def test__run(
     mqtt_host: str,
     mqtt_port: int,
     retry_count: int,
-    device_passwords: typing.Dict[str, str],
+    device_passwords: dict[str, str],
     fetch_device_info: bool,
 ) -> None:
     with unittest.mock.patch("aiomqtt.Client") as mqtt_client_mock, unittest.mock.patch(
@@ -299,7 +299,7 @@ async def test__run_authentication(
     mqtt_host: str,
     mqtt_port: int,
     mqtt_username: str,
-    mqtt_password: typing.Optional[str],
+    mqtt_password: str | None,
 ) -> None:
     with unittest.mock.patch("aiomqtt.Client") as mqtt_client_mock, unittest.mock.patch(
         "switchbot_mqtt._listen"
@@ -343,35 +343,37 @@ async def test__run_authentication_missing_username(
         )
 
 
+class _ActorMockBase(_MQTTControlledActor):
+    def __init__(
+        self,
+        device: bleak.backends.device.BLEDevice,
+        retry_count: int,
+        password: str | None,
+    ) -> None:
+        super().__init__(device=device, retry_count=retry_count, password=password)
+
+    async def execute_command(
+        self,
+        *,
+        mqtt_message_payload: bytes,
+        mqtt_client: aiomqtt.Client,
+        update_device_info: bool,
+        mqtt_topic_prefix: str,
+    ) -> None:
+        pass
+
+    def _get_device(self) -> None:
+        return None
+
+
 def _mock_actor_class(
     *,
-    command_topic_levels: typing.Tuple[_MQTTTopicLevel, ...] = NotImplemented,
-    request_info_levels: typing.Tuple[_MQTTTopicLevel, ...] = NotImplemented,
-) -> typing.Type:
-    class _ActorMock(_MQTTControlledActor):
+    command_topic_levels: tuple[_MQTTTopicLevel, ...] = NotImplemented,
+    request_info_levels: tuple[_MQTTTopicLevel, ...] = NotImplemented,
+) -> type[_ActorMockBase]:
+    class _ActorMock(_ActorMockBase):
         MQTT_COMMAND_TOPIC_LEVELS = command_topic_levels
         _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = request_info_levels
-
-        def __init__(
-            self,
-            device: bleak.backends.device.BLEDevice,
-            retry_count: int,
-            password: typing.Optional[str],
-        ) -> None:
-            super().__init__(device=device, retry_count=retry_count, password=password)
-
-        async def execute_command(
-            self,
-            *,
-            mqtt_message_payload: bytes,
-            mqtt_client: aiomqtt.Client,
-            update_device_info: bool,
-            mqtt_topic_prefix: str,
-        ) -> None:
-            pass
-
-        def _get_device(self) -> None:
-            return None
 
     return _ActorMock
 
@@ -390,12 +392,13 @@ def _mock_actor_class(
 @pytest.mark.parametrize("payload", [b"", b"whatever"])
 async def test__mqtt_update_device_info_callback(
     caplog: _pytest.logging.LogCaptureFixture,
-    topic_levels: typing.Tuple[_MQTTTopicLevel, ...],
+    topic_levels: tuple[_MQTTTopicLevel, ...],
     topic: str,
     expected_mac_address: str,
     payload: bytes,
 ) -> None:
     ActorMock = _mock_actor_class(request_info_levels=topic_levels)
+    mqtt_client = unittest.mock.Mock()
     message = aiomqtt.Message(
         topic=topic, payload=payload, qos=0, retain=False, mid=0, properties=None
     )
@@ -410,7 +413,7 @@ async def test__mqtt_update_device_info_callback(
         logging.DEBUG
     ):
         await ActorMock._mqtt_update_device_info_callback(
-            mqtt_client="client_dummy",
+            mqtt_client=mqtt_client,
             message=message,
             mqtt_topic_prefix="prfx/",
             retry_count=21,  # tested in test__mqtt_command_callback
@@ -420,7 +423,7 @@ async def test__mqtt_update_device_info_callback(
     find_device_mock.assert_awaited_once_with(expected_mac_address)
     init_mock.assert_called_once_with(device=device, retry_count=21, password=None)
     update_mock.assert_called_once_with(
-        mqtt_client="client_dummy", mqtt_topic_prefix="prfx/"
+        mqtt_client=mqtt_client, mqtt_topic_prefix="prfx/"
     )
     assert caplog.record_tuples == [
         (
@@ -454,7 +457,7 @@ async def test__mqtt_update_device_info_callback_ignore_retained(
         logging.DEBUG
     ):
         await ActorMock._mqtt_update_device_info_callback(
-            mqtt_client="client_dummy",
+            mqtt_client=unittest.mock.Mock(),
             message=message,
             mqtt_topic_prefix="ignored",
             retry_count=21,
@@ -540,7 +543,7 @@ async def test__mqtt_update_device_info_callback_ignore_retained(
 async def test__mqtt_command_callback(
     caplog: _pytest.logging.LogCaptureFixture,
     topic_prefix: str,
-    command_topic_levels: typing.Tuple[_MQTTTopicLevel, ...],
+    command_topic_levels: tuple[_MQTTTopicLevel, ...],
     topic: str,
     payload: bytes,
     expected_mac_address: str,
@@ -548,6 +551,7 @@ async def test__mqtt_command_callback(
     fetch_device_info: bool,
 ) -> None:
     ActorMock = _mock_actor_class(command_topic_levels=command_topic_levels)
+    mqtt_client = unittest.mock.Mock()
     message = aiomqtt.Message(
         topic=topic, payload=payload, qos=0, retain=False, mid=0, properties=None
     )
@@ -563,7 +567,7 @@ async def test__mqtt_command_callback(
         logging.DEBUG
     ):
         await ActorMock._mqtt_command_callback(
-            mqtt_client="client_dummy",
+            mqtt_client=mqtt_client,
             message=message,
             retry_count=retry_count,
             device_passwords={},
@@ -575,7 +579,7 @@ async def test__mqtt_command_callback(
         device=device, retry_count=retry_count, password=None
     )
     execute_command_mock.assert_awaited_once_with(
-        mqtt_client="client_dummy",
+        mqtt_client=mqtt_client,
         mqtt_message_payload=payload,
         update_device_info=fetch_device_info,
         mqtt_topic_prefix=topic_prefix,
@@ -599,11 +603,12 @@ async def test__mqtt_command_callback(
     ],
 )
 async def test__mqtt_command_callback_password(
-    mac_address: str, expected_password: typing.Optional[str]
+    mac_address: str, expected_password: str | None
 ) -> None:
     ActorMock = _mock_actor_class(
         command_topic_levels=("switchbot", _MQTTTopicPlaceholder.MAC_ADDRESS)
     )
+    mqtt_client = unittest.mock.Mock()
     message = aiomqtt.Message(
         topic="prefix-switchbot/" + mac_address,
         payload=b"whatever",
@@ -622,7 +627,7 @@ async def test__mqtt_command_callback_password(
         ActorMock, "execute_command"
     ) as execute_command_mock:
         await ActorMock._mqtt_command_callback(
-            mqtt_client="client_dummy",
+            mqtt_client=mqtt_client,
             message=message,
             retry_count=3,
             device_passwords={
@@ -638,7 +643,7 @@ async def test__mqtt_command_callback_password(
         device=device, retry_count=3, password=expected_password
     )
     execute_command_mock.assert_awaited_once_with(
-        mqtt_client="client_dummy",
+        mqtt_client=mqtt_client,
         mqtt_message_payload=b"whatever",
         update_device_info=True,
         mqtt_topic_prefix="prefix-",
@@ -671,7 +676,7 @@ async def test__mqtt_command_callback_unexpected_topic(
         logging.DEBUG
     ):
         await ActorMock._mqtt_command_callback(
-            mqtt_client="client_dummy",
+            mqtt_client=unittest.mock.Mock(),
             message=message,
             retry_count=3,
             device_passwords={},
@@ -715,7 +720,7 @@ async def test__mqtt_command_callback_invalid_mac_address(
         logging.DEBUG
     ):
         await ActorMock._mqtt_command_callback(
-            mqtt_client="client_dummy",
+            mqtt_client=unittest.mock.Mock(),
             message=message,
             retry_count=3,
             device_passwords={},
@@ -761,7 +766,7 @@ async def test__mqtt_command_callback_device_not_found(
         logging.DEBUG
     ):
         await ActorMock._mqtt_command_callback(
-            mqtt_client="client_dummy",
+            mqtt_client=unittest.mock.Mock(),
             message=message,
             retry_count=3,
             device_passwords={},
@@ -806,7 +811,7 @@ async def test__mqtt_command_callback_ignore_retained(
         logging.DEBUG
     ):
         await ActorMock._mqtt_command_callback(
-            mqtt_client="client_dummy",
+            mqtt_client=unittest.mock.Mock(),
             message=message,
             retry_count=4,
             device_passwords={},
@@ -850,7 +855,7 @@ async def test__mqtt_command_callback_ignore_retained(
 async def test__report_state(
     caplog: _pytest.logging.LogCaptureFixture,
     topic_prefix: str,
-    state_topic_levels: typing.Tuple[_MQTTTopicLevel, ...],
+    state_topic_levels: tuple[_MQTTTopicLevel, ...],
     mac_address: str,
     expected_topic: str,
     state: bytes,
@@ -864,7 +869,7 @@ async def test__report_state(
             self,
             device: bleak.backends.device.BLEDevice,
             retry_count: int,
-            password: typing.Optional[str],
+            password: str | None,
         ) -> None:
             super().__init__(device=device, retry_count=retry_count, password=password)
 

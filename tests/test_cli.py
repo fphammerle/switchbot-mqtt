@@ -94,7 +94,7 @@ def test_console_entry_point() -> None:
     ],
 )
 def test__main(
-    argv: typing.List[str],
+    argv: list[str],
     expected_mqtt_host: str,
     expected_mqtt_port: int,
     expected_username: str,
@@ -198,7 +198,7 @@ def test__main_mqtt_password_file_collision(
     ],
 )
 def test__main_device_password_file(
-    tmp_path: pathlib.Path, device_passwords: typing.Dict[str, str]
+    tmp_path: pathlib.Path, device_passwords: dict[str, str]
 ) -> None:
     device_passwords_path = tmp_path.joinpath("passwords.json")
     device_passwords_path.write_text(json.dumps(device_passwords), encoding="utf8")
@@ -226,7 +226,7 @@ def test__main_device_password_file(
     )
 
 
-_RUN_DEFAULT_KWARGS: typing.Dict[str, typing.Any] = {
+_RUN_DEFAULT_KWARGS: dict[str, typing.Any] = {
     "mqtt_host": "localhost",
     "mqtt_port": 8883,
     "mqtt_disable_tls": False,
@@ -275,7 +275,7 @@ def test__main_mqtt_disable_tls_overwrite_port() -> None:
     [([], "homeassistant/"), (["--mqtt-topic-prefix", ""], "")],
 )
 def test__main_mqtt_topic_prefix(
-    additional_argv: typing.List[str], expected_topic_prefix: str
+    additional_argv: list[str], expected_topic_prefix: str
 ) -> None:
     with unittest.mock.patch("switchbot_mqtt._run") as run_mock, unittest.mock.patch(
         "sys.argv", ["", "--mqtt-host", "localhost"] + additional_argv
@@ -345,7 +345,7 @@ def test__main_fetch_device_info() -> None:
     ],
 )
 def test__main_log_config(
-    additional_argv: typing.List[str], root_log_level: int, log_format: str
+    additional_argv: list[str], root_log_level: int, log_format: str
 ) -> None:
     with unittest.mock.patch(
         "sys.argv", ["", "--mqtt-host", "localhost"] + additional_argv

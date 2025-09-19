@@ -16,8 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import typing
-
 import pytest
 
 # pylint: disable=import-private-name; internal
@@ -87,9 +85,9 @@ def test__mac_address_valid(mac_address: str, valid: bool) -> None:
 )
 def test__parse_mqtt_topic(
     expected_prefix: str,
-    expected_levels: typing.List[_MQTTTopicLevel],
+    expected_levels: list[_MQTTTopicLevel],
     topic: str,
-    expected_attrs: typing.Dict[_MQTTTopicPlaceholder, str],
+    expected_attrs: dict[_MQTTTopicPlaceholder, str],
 ) -> None:
     assert (
         _parse_mqtt_topic(
@@ -134,7 +132,7 @@ def test__parse_mqtt_topic_unexpected_prefix() -> None:
     ],
 )
 def test__parse_mqtt_topic_fail(
-    expected_prefix: str, expected_levels: typing.List[_MQTTTopicLevel], topic: str
+    expected_prefix: str, expected_levels: list[_MQTTTopicLevel], topic: str
 ) -> None:
     with pytest.raises(ValueError):
         _parse_mqtt_topic(

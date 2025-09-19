@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import collections.abc
 import logging
-import typing
 
 import aiomqtt
 import bleak
@@ -62,7 +62,7 @@ class _ButtonAutomator(_MQTTControlledActor):
         *,
         device: bleak.backends.device.BLEDevice,
         retry_count: int,
-        password: typing.Optional[str],
+        password: str | None,
     ) -> None:
         self.__device = switchbot.Switchbot(
             device=device, password=password, retry_count=retry_count
@@ -120,12 +120,8 @@ class _ButtonAutomator(_MQTTControlledActor):
 class _CurtainMotor(_MQTTControlledActor):
     # https://www.home-assistant.io/integrations/cover.mqtt/
     MQTT_COMMAND_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + ("set",)
-    _MQTT_SET_POSITION_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = (
-        _CURTAIN_TOPIC_LEVELS_PREFIX
-        + (
-            "position",
-            "set-percent",
-        )
+    _MQTT_SET_POSITION_TOPIC_LEVELS: tuple[_MQTTTopicLevel, ...] = (
+        _CURTAIN_TOPIC_LEVELS_PREFIX + ("position", "set-percent")
     )
     _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS = _CURTAIN_TOPIC_LEVELS_PREFIX + (
         "request-device-info",
@@ -149,7 +145,7 @@ class _CurtainMotor(_MQTTControlledActor):
         *,
         device: bleak.backends.device.BLEDevice,
         retry_count: int,
-        password: typing.Optional[str],
+        password: str | None,
     ) -> None:
         # > The position of the curtain is saved in self._pos with 0 = open and 100 = closed.
         # https://github.com/Danielhiversen/pySwitchbot/blob/0.10.0/switchbot/__init__.py#L150
@@ -267,7 +263,7 @@ class _CurtainMotor(_MQTTControlledActor):
         message: aiomqtt.Message,
         mqtt_topic_prefix: str,
         retry_count: int,
-        device_passwords: typing.Dict[str, str],
+        device_passwords: dict[str, str],
         fetch_device_info: bool,
     ) -> None:
         # pylint: disable=unused-argument; callback
@@ -308,7 +304,7 @@ class _CurtainMotor(_MQTTControlledActor):
         cls,
         *,
         enable_device_info_update_topic: bool,
-    ) -> typing.Dict[typing.Tuple[_MQTTTopicLevel, ...], typing.Callable]:
+    ) -> dict[tuple[_MQTTTopicLevel, ...], collections.abc.Callable]:
         callbacks = super()._get_mqtt_message_callbacks(
             enable_device_info_update_topic=enable_device_info_update_topic
         )

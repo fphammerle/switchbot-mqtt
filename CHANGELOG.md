@@ -20,14 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (bluepy-helper replaced with bleak)
 - replaced [paho-mqtt](https://github.com/eclipse/paho.mqtt.python)
   with its async wrapper [aiomqtt](https://github.com/sbtinstruments/aiomqtt)
-- container image: upgraded alpine base image from v3.13.1 to v3.18.4
+- container image: upgraded alpine base image from v3.13.1 to v3.19.8
 
 ### Removed
 - command-line option `--mqtt-enable-tls` (TLS now enabled by default)
 - compatibility with `python3.7`
-- compatibility with `python3.8`
-  (pySwitchbot v0.17.2 added constraint `bleak-retry-connector>=1.1.1`
-  requiring `python>=3.9`)
+- compatibility with `python3.8` (security support ended on 2024-10-07)
+- compatibility with `python3.9` (security support will end on 2025-10-31)
 
 ## [3.3.1] - 2022-08-31
 ### Fixed

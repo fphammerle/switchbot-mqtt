@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import collections.abc
 import logging
 import socket
 import ssl
-import typing
 
 import aiomqtt
 
@@ -37,10 +37,10 @@ _MQTT_LAST_WILL_PAYLOAD = "offline"
 async def _listen(
     *,
     mqtt_client: aiomqtt.Client,
-    topic_callbacks: typing.Iterable[typing.Tuple[str, typing.Callable]],
+    topic_callbacks: collections.abc.Iterable[tuple[str, collections.abc.Callable]],
     mqtt_topic_prefix: str,
     retry_count: int,
-    device_passwords: typing.Dict[str, str],
+    device_passwords: dict[str, str],
     fetch_device_info: bool,
 ) -> None:
     async with mqtt_client.messages() as messages:
@@ -88,11 +88,11 @@ async def _run(  # pylint: disable=too-many-arguments
     mqtt_host: str,
     mqtt_port: int,
     mqtt_disable_tls: bool,
-    mqtt_username: typing.Optional[str],
-    mqtt_password: typing.Optional[str],
+    mqtt_username: str | None,
+    mqtt_password: str | None,
     mqtt_topic_prefix: str,
     retry_count: int,
-    device_passwords: typing.Dict[str, str],
+    device_passwords: dict[str, str],
     fetch_device_info: bool,
 ) -> None:
     _LOGGER.info(
@@ -119,7 +119,7 @@ async def _run(  # pylint: disable=too-many-arguments
         ),
     ) as mqtt_client:
         _log_mqtt_connected(mqtt_client=mqtt_client)
-        topic_callbacks: typing.List[typing.Tuple[str, typing.Callable]] = []
+        topic_callbacks: list[tuple[str, collections.abc.Callable]] = []
         for actor_class in (_ButtonAutomator, _CurtainMotor):
             async for topic, callback in actor_class.mqtt_subscribe(
                 mqtt_client=mqtt_client,

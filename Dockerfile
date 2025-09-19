@@ -2,7 +2,7 @@
 
 # not using python:3.*-alpine cause glib-dev package depends on python3
 # https://pkgs.alpinelinux.org/package/v3.18/main/aarch64/glib-dev
-ARG BASE_IMAGE=docker.io/alpine:3.18.4
+ARG BASE_IMAGE=docker.io/alpine:3.19.8
 ARG SOURCE_DIR_PATH=/switchbot-mqtt
 
 
@@ -26,7 +26,7 @@ RUN apk add --no-cache \
     && adduser -S build
 
 USER build
-RUN pip3 install --user --no-cache-dir pipenv==2023.6.18
+RUN pip3 install --user --break-system-packages --no-cache-dir pipenv==2025.0.4
 
 ARG SOURCE_DIR_PATH
 COPY --chown=build:nobody Pipfile Pipfile.lock $SOURCE_DIR_PATH/

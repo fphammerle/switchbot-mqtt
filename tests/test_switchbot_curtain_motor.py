@@ -17,7 +17,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
-import typing
 import unittest.mock
 
 import _pytest.logging  # pylint: disable=import-private-name; typing
@@ -218,7 +217,7 @@ async def test_execute_command(
     caplog: _pytest.logging.LogCaptureFixture,
     topic_prefix: str,
     mac_address: str,
-    password: typing.Optional[str],
+    password: str | None,
     retry_count: int,
     message_payload: bytes,
     action_name: str,

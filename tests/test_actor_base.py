@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import typing
 import unittest.mock
 
 import bleak.backends.device
@@ -45,7 +44,7 @@ async def test_execute_command_abstract() -> None:
             self,
             device: bleak.backends.device.BLEDevice,
             retry_count: int,
-            password: typing.Optional[str],
+            password: str | None,
         ) -> None:
             super().__init__(device=device, retry_count=retry_count, password=password)
 

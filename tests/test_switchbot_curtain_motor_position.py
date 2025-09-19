@@ -30,6 +30,14 @@ from switchbot_mqtt._actors import _CurtainMotor
 # pylint: disable=protected-access,too-many-positional-arguments
 
 
+def _create_mqtt_message(
+    *, topic: str, payload: bytes, retain: bool = False
+) -> aiomqtt.Message:
+    return aiomqtt.Message(
+        topic=topic, payload=payload, qos=0, retain=retain, mid=0, properties=None
+    )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("topic", "payload", "expected_mac_address", "expected_position_percent"),
@@ -63,9 +71,7 @@ async def test__mqtt_set_position_callback(
     retry_count: int,
     expected_position_percent: int,
 ) -> None:
-    message = aiomqtt.Message(
-        topic=topic, payload=payload, qos=0, retain=False, mid=0, properties=None
-    )
+    message = _create_mqtt_message(topic=topic, payload=payload)
     device = unittest.mock.Mock()
     device.address = expected_mac_address
     with unittest.mock.patch.object(
@@ -109,13 +115,10 @@ async def test__mqtt_set_position_callback(
 async def test__mqtt_set_position_callback_ignore_retained(
     caplog: _pytest.logging.LogCaptureFixture,
 ) -> None:
-    message = aiomqtt.Message(
+    message = _create_mqtt_message(
         topic="homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
         payload=b"42",
-        qos=0,
         retain=True,
-        mid=0,
-        properties=None,
     )
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
@@ -143,13 +146,8 @@ async def test__mqtt_set_position_callback_ignore_retained(
 async def test__mqtt_set_position_callback_unexpected_topic(
     caplog: _pytest.logging.LogCaptureFixture,
 ) -> None:
-    message = aiomqtt.Message(
-        topic="switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set",
-        payload=b"42",
-        qos=0,
-        retain=False,
-        mid=0,
-        properties=None,
+    message = _create_mqtt_message(
+        topic="switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set", payload=b"42"
     )
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
@@ -176,13 +174,9 @@ async def test__mqtt_set_position_callback_unexpected_topic(
 async def test__mqtt_set_position_callback_invalid_mac_address(
     caplog: _pytest.logging.LogCaptureFixture,
 ) -> None:
-    message = aiomqtt.Message(
+    message = _create_mqtt_message(
         topic="tnatsissaemoh/cover/switchbot-curtain/aa:bb:cc:dd:ee/position/set-percent",
         payload=b"42",
-        qos=0,
-        retain=False,
-        mid=0,
-        properties=None,
     )
     with unittest.mock.patch(
         "switchbot.SwitchbotCurtain"
@@ -211,13 +205,9 @@ async def test__mqtt_set_position_callback_invalid_position(
     caplog: _pytest.logging.LogCaptureFixture,
     payload: bytes,
 ) -> None:
-    message = aiomqtt.Message(
+    message = _create_mqtt_message(
         topic="homeassistant/cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
         payload=payload,
-        qos=0,
-        retain=False,
-        mid=0,
-        properties=None,
     )
     with unittest.mock.patch.object(
         bleak.BleakScanner, "find_device_by_address"
@@ -249,13 +239,9 @@ async def test__mqtt_set_position_callback_invalid_position(
 async def test__mqtt_set_position_callback_command_failed(
     caplog: _pytest.logging.LogCaptureFixture,
 ) -> None:
-    message = aiomqtt.Message(
+    message = _create_mqtt_message(
         topic="cover/switchbot-curtain/aa:bb:cc:dd:ee:ff/position/set-percent",
         payload=b"21",
-        qos=0,
-        retain=False,
-        mid=0,
-        properties=None,
     )
     device = unittest.mock.Mock()
     device.address = "aa:bb:cc:dd:ee:ff"

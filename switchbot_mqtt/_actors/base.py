@@ -26,6 +26,7 @@
 from __future__ import annotations  # PEP563 (default in python>=3.10)
 
 import abc
+import collections.abc
 import logging
 import typing
 
@@ -45,14 +46,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class _MQTTControlledActor(abc.ABC):
-    MQTT_COMMAND_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = NotImplemented
-    _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = (
-        NotImplemented
-    )
-    MQTT_STATE_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = NotImplemented
-    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS: typing.Tuple[_MQTTTopicLevel, ...] = (
-        NotImplemented
-    )
+    MQTT_COMMAND_TOPIC_LEVELS: tuple[_MQTTTopicLevel, ...] = NotImplemented
+    _MQTT_UPDATE_DEVICE_INFO_TOPIC_LEVELS: tuple[_MQTTTopicLevel, ...] = NotImplemented
+    MQTT_STATE_TOPIC_LEVELS: tuple[_MQTTTopicLevel, ...] = NotImplemented
+    _MQTT_BATTERY_PERCENTAGE_TOPIC_LEVELS: tuple[_MQTTTopicLevel, ...] = NotImplemented
 
     @classmethod
     def get_mqtt_update_device_info_topic(cls, *, prefix: str, mac_address: str) -> str:
@@ -76,11 +73,11 @@ class _MQTTControlledActor(abc.ABC):
         *,
         device: bleak.backends.device.BLEDevice,
         retry_count: int,
-        password: typing.Optional[str],
+        password: str | None,
     ) -> None:
         # alternative: pySwitchbot >=0.10.0 provides SwitchbotDevice.get_mac()
         self._mac_address = device.address
-        self._basic_device_info: typing.Optional[typing.Dict[str, typing.Any]] = None
+        self._basic_device_info: dict[str, typing.Any] | None = None
 
     @abc.abstractmethod
     def _get_device(self) -> switchbot.SwitchbotDevice:
@@ -118,10 +115,10 @@ class _MQTTControlledActor(abc.ABC):
         *,
         topic: aiomqtt.Topic,
         mqtt_topic_prefix: str,
-        expected_topic_levels: typing.Collection[_MQTTTopicLevel],
+        expected_topic_levels: collections.abc.Collection[_MQTTTopicLevel],
         retry_count: int,
-        device_passwords: typing.Dict[str, str],
-    ) -> typing.Optional[_MQTTControlledActor]:
+        device_passwords: dict[str, str],
+    ) -> _MQTTControlledActor | None:
         try:
             mac_address = _parse_mqtt_topic(
                 topic=topic.value,
@@ -138,7 +135,7 @@ class _MQTTControlledActor(abc.ABC):
         # disabling mypy to workaround false-positive:
         # > error: Missing named argument "service_uuids" for
         # . "find_device_by_address" of "BleakScanner"  [call-arg]
-        device = await bleak.BleakScanner.find_device_by_address(mac_address)  # type: ignore
+        device = await bleak.BleakScanner.find_device_by_address(mac_address)
         if device is None:
             _LOGGER.error(
                 "failed to find bluetooth low energy device with mac address %s",
@@ -160,7 +157,7 @@ class _MQTTControlledActor(abc.ABC):
         message: aiomqtt.Message,
         mqtt_topic_prefix: str,
         retry_count: int,
-        device_passwords: typing.Dict[str, str],
+        device_passwords: dict[str, str],
         fetch_device_info: bool,
     ) -> None:
         # pylint: disable=unused-argument; callback
@@ -202,7 +199,7 @@ class _MQTTControlledActor(abc.ABC):
         message: aiomqtt.Message,
         mqtt_topic_prefix: str,
         retry_count: int,
-        device_passwords: typing.Dict[str, str],
+        device_passwords: dict[str, str],
         fetch_device_info: bool,
     ) -> None:
         # pylint: disable=unused-argument; callback
@@ -232,7 +229,7 @@ class _MQTTControlledActor(abc.ABC):
         cls,
         *,
         enable_device_info_update_topic: bool,
-    ) -> typing.Dict[typing.Tuple[_MQTTTopicLevel, ...], typing.Callable]:
+    ) -> dict[tuple[_MQTTTopicLevel, ...], collections.abc.Callable]:
         # returning dict because `paho.mqtt.client.Client.message_callback_add` overwrites
         # callbacks with same topic pattern
         # https://github.com/eclipse/paho.mqtt.python/blob/v1.6.1/src/paho/mqtt/client.py#L2304
@@ -251,7 +248,7 @@ class _MQTTControlledActor(abc.ABC):
         mqtt_client: aiomqtt.Client,
         mqtt_topic_prefix: str,
         fetch_device_info: bool,
-    ) -> typing.AsyncIterator[typing.Tuple[str, typing.Callable]]:
+    ) -> collections.abc.AsyncIterator[tuple[str, collections.abc.Callable]]:
         for topic_levels, callback in cls._get_mqtt_message_callbacks(
             enable_device_info_update_topic=fetch_device_info
         ).items():
@@ -268,7 +265,7 @@ class _MQTTControlledActor(abc.ABC):
         self,
         *,
         topic_prefix: str,
-        topic_levels: typing.Iterable[_MQTTTopicLevel],
+        topic_levels: collections.abc.Iterable[_MQTTTopicLevel],
         payload: bytes,
         mqtt_client: aiomqtt.Client,
     ) -> None:
