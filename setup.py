@@ -67,6 +67,7 @@ setuptools.setup(
         # .github/workflows/python.yml
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Home Automation",
     ],
     entry_points={"console_scripts": ["switchbot-mqtt = switchbot_mqtt._cli:_main"]},

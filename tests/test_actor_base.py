@@ -75,7 +75,9 @@ async def test_execute_command_abstract() -> None:
         )
     exc_info.match(
         r"^Can't instantiate abstract class _MQTTControlledActor"
-        r" with abstract methods __init__, _get_device, execute_command$"
+        r" (with abstract methods __init__, _get_device, execute_command"
+        r"|without an implementation for abstract methods '__init__'"
+        r", '_get_device', 'execute_command')$"
     )
     actor = _ActorMock(device=unittest.mock.Mock(), retry_count=42, password=None)
     with pytest.raises(NotImplementedError):

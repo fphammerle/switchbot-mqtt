@@ -1,3 +1,4 @@
+---
 # sync with https://github.com/fphammerle/ical2vdir/blob/master/.github/workflows/python.yml
 
 # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions
@@ -36,6 +37,7 @@ jobs:
         python-version:
         - '3.10'
         - '3.11'
+        - '3.12'
       fail-fast: false
     steps:
     - uses: actions/checkout@v5
@@ -55,7 +57,8 @@ jobs:
       env:
         PYTHON_VERSION: ${{ matrix.python-version }}
     - run: pipenv graph
-    - run: pipenv run pytest --cov="$(cat *.egg-info/top_level.txt)" --cov-report=term-missing --cov-fail-under=100
+    - run: pipenv run pytest --cov="$(cat *.egg-info/top_level.txt)"
+        --cov-report=term-missing --cov-fail-under=100
     - run: pipenv run pylint "$(cat *.egg-info/top_level.txt)"
     # https://github.com/PyCQA/pylint/issues/352
     - run: pipenv run pylint --disable=duplicate-code tests/*

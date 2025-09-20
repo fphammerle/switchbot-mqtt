@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- declare compatibility with `python3.11`
+- declare compatibility with `python3.11` & `python3.12`
 
 ### Changed
 - TLS now enabled by default (disable via `--mqtt-disable-tls`)
