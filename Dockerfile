@@ -14,7 +14,6 @@ RUN apk add --no-cache \
         gcc \
         git `# setuptools_scm` \
         glib-dev \
-        jq `# edit Pipfile.lock` \
         make \
         musl-dev \
         openssl-dev `# cryptography build` \
@@ -29,21 +28,17 @@ USER build
 RUN pip3 install --user --break-system-packages --no-cache-dir pipenv==2025.0.4
 
 ARG SOURCE_DIR_PATH
-COPY --chown=build:nobody Pipfile Pipfile.lock $SOURCE_DIR_PATH/
+COPY --chown=build:nobody . $SOURCE_DIR_PATH
 WORKDIR $SOURCE_DIR_PATH
 ENV PIPENV_CACHE_DIR=/tmp/pipenv-cache \
     PIPENV_VENV_IN_PROJECT=yes-please \
     PATH=/home/build/.local/bin:$PATH
-# `sponge` is not pre-installed
-RUN jq 'del(.default."switchbot-mqtt", .default."sanitized-package")' Pipfile.lock > Pipfile.lock~ \
-    && mv Pipfile.lock~ Pipfile.lock \
-    && pipenv install --deploy
-COPY --chown=build:nobody . $SOURCE_DIR_PATH
 RUN if ! git status; then export SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0; fi \
     && pipenv install --deploy \
     && pipenv graph \
     && pipenv run pip freeze \
     && rm -rf .git/ $PIPENV_CACHE_DIR \
+    && pipenv run switchbot-mqtt --help \
     && chmod -cR a+rX .
 
 # workaround for broken multi-stage copy
