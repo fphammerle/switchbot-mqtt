@@ -70,7 +70,7 @@ def _log_mqtt_connected(mqtt_client: aiomqtt.Client) -> None:
             # pylint: disable=protected-access
             mqtt_client._client.socket()
         )
-        (mqtt_broker_host, mqtt_broker_port, *_) = mqtt_socket.getpeername()
+        mqtt_broker_host, mqtt_broker_port, *_ = mqtt_socket.getpeername()
         # https://github.com/sbtinstruments/aiomqtt/blob/v1.2.1/aiomqtt/client.py#L1089
         _LOGGER.debug(
             "connected to MQTT broker %s:%d",
