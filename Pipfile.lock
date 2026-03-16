@@ -466,7 +466,6 @@
                 "sha256:f145bba11b878005c496e93e257c1e88f154d278d2638e6450d17e0f31e558d2",
                 "sha256:fe346b143ff9685e40192a4960938545c699054ba11d4f9029f94751e3f71d87"
             ],
-            "index": "pypi",
             "markers": "python_version >= '3.8' and python_full_version not in '3.9.0, 3.9.1'",
             "version": "==46.0.5"
         },
@@ -966,11 +965,12 @@
         },
         "pyopenssl": {
             "hashes": [
-                "sha256:1fda6fc034d5e3d179d39e59c1895c9faeaf40a79de5fc4cbbfbe0d36f4a77b6",
-                "sha256:c981cb0a3fd84e8602d7afc209522773b94c1c2446a3c710a75b06fe1beae329"
+                "sha256:df94d28498848b98cc1c0ffb8ef1e71e40210d3b0a8064c9d29571ed2904bf81",
+                "sha256:f293934e52936f2e3413b89c6ce36df66a0b34ae1ea3a053b8c5020ff2f513fc"
             ],
-            "markers": "python_version >= '3.7'",
-            "version": "==25.3.0"
+            "index": "pypi",
+            "markers": "python_version >= '3.8'",
+            "version": "==26.0.0"
         },
         "pyswitchbot": {
             "hashes": [
