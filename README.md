@@ -13,6 +13,13 @@ Compatible with [Home Assistant](https://www.home-assistant.io/)'s
 [MQTT Switch](https://www.home-assistant.io/integrations/switch.mqtt/)
 and [MQTT Cover](https://www.home-assistant.io/integrations/cover.mqtt/) platform.
 
+**This project is unmaintained.**
+Home assistant's [bluetooth integration](https://www.home-assistant.io/integrations/bluetooth/)
+now accesses BlueZ via D-Bus directly,
+and [ESPHome bluetooth proxies](https://esphome.io/components/bluetooth_proxy/) offer a
+hardware-based alternative — removing the reasons for using `switchbot-mqtt` alongside home
+assistant explained in section "[Rationale](#rationale)".
+
 ## Setup
 
 ```sh
@@ -128,6 +135,15 @@ The [official home assistant image](https://hub.docker.com/r/homeassistant/home-
 runs as `root`.
 This imposes an unnecessary security risk, especially when disabling user namespace remapping
 (`--userns host`).
+
+Nowadays, home assistant's [bluetooth integration](https://www.home-assistant.io/integrations/bluetooth/)
+accesses BlueZ via its D-Bus socket instead of requiring access to the host's network stack,
+and an [ESP32 device running ESPHome](https://esphome.io/components/bluetooth_proxy/)
+can act as a bluetooth proxy without requiring any bluetooth access on the host running home assistant —
+rendering the rationale above obsolete.
+If you're using `switchbot-mqtt` solely as a bridge to home assistant,
+without any other direct MQTT interaction,
+`switchbot-mqtt` has become entirely unnecessary in favor of the official integration.
 
 ### Setup
 
